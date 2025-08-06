@@ -66,5 +66,9 @@ func ExchangeCode(c *gin.Context) {
 		"code":    constant.Success,
 		"data":    tokenResult,
 	})
+}
+
+// GetMessages 获取对话消息
+func GetMessages(c *gin.Context) {
 
 }

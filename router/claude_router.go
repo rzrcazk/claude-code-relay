@@ -1,23 +1,17 @@
 package router
 
 import (
-	"net/http"
-	"time"
-
+	"claude-code-relay/controller"
+	"claude-code-relay/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 func SetClaudeCodeRouter(server *gin.Engine) {
-
-	claude := server.Group("/claude-code/")
+	claude := server.Group("/claude-code")
+	// api key 鉴权
+	claude.Use(middleware.ClaudeCodeAuth())
 	{
-		// 健康检查
-		claude.GET("/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
-				"status": "ok",
-				"time":   time.Now().Unix(),
-			})
-		})
+		// 对话接口
+		claude.POST("/v1/messages", controller.GetMessages)
 	}
-
 }
