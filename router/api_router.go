@@ -56,6 +56,16 @@ func SetAPIRouter(server *gin.Engine) {
 				task.DELETE("/:id", controller.DeleteTask)
 			}
 
+			// 分组相关
+			group := authenticated.Group("/groups")
+			{
+				group.GET("/list", controller.GetGroups)      // 获取分组列表
+				group.POST("/create", controller.CreateGroup) // 创建分组
+				group.GET("/:id", controller.GetGroup)        // 获取分组详情
+				group.PUT("/:id", controller.UpdateGroup)     // 更新分组
+				group.DELETE("/:id", controller.DeleteGroup)  // 删除分组
+			}
+
 			// 账号管理相关
 			account := authenticated.Group("/accounts")
 			{
