@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -12,8 +10,8 @@ type Group struct {
 	Remark    string         `json:"remark"`
 	Status    int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
 	UserID    uint           `json:"user_id" gorm:"not null;index"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt Time           `json:"created_at" gorm:"type:timestamp"`
+	UpdatedAt Time           `json:"updated_at" gorm:"type:timestamp"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 

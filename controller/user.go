@@ -110,9 +110,7 @@ func GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "获取成功",
 		"code":    constant.Success,
-		"data": gin.H{
-			"user": profile,
-		},
+		"data":    profile,
 	})
 }
 

@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -23,12 +21,12 @@ type Account struct {
 	TodayUsageTokens int            `json:"today_usage_tokens" gorm:"default:0;comment:今日使用tokens"`
 	EnableProxy      bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
 	ProxyURI         string         `json:"proxy_uri" gorm:"comment:代理URI字符串"`
-	LastUsedTime     *time.Time     `json:"last_used_time" gorm:"comment:最后使用时间"`
+	LastUsedTime     *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
 	CurrentStatus    int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
 	ActiveStatus     int            `json:"active_status" gorm:"default:1;comment:激活状态(1:激活,2:禁用)"`
 	UserID           uint           `json:"user_id" gorm:"not null;comment:所属用户ID"`
-	CreatedAt        time.Time      `json:"created_at"`
-	UpdatedAt        time.Time      `json:"updated_at"`
+	CreatedAt        Time           `json:"created_at" gorm:"type:timestamp"`
+	UpdatedAt        Time           `json:"updated_at" gorm:"type:timestamp"`
 	DeletedAt        gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联用户

@@ -7,18 +7,18 @@ import (
 )
 
 type Task struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	Title       string    `json:"title" gorm:"not null"`
-	Description string    `json:"description"`
-	Status      string    `json:"status" gorm:"default:pending"` // pending, running, completed, failed
-	Priority    int       `json:"priority" gorm:"default:1"`     // 1:低 2:中 3:高
-	UserID      uint      `json:"user_id" gorm:"not null"`
-	ScheduleAt  time.Time `json:"schedule_at"`
-	CompletedAt *time.Time `json:"completed_at"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uint           `json:"id" gorm:"primaryKey"`
+	Title       string         `json:"title" gorm:"not null"`
+	Description string         `json:"description"`
+	Status      string         `json:"status" gorm:"default:pending"` // pending, running, completed, failed
+	Priority    int            `json:"priority" gorm:"default:1"`     // 1:低 2:中 3:高
+	UserID      uint           `json:"user_id" gorm:"not null"`
+	ScheduleAt  Time           `json:"schedule_at" gorm:"type:timestamp"`
+	CompletedAt *Time          `json:"completed_at" gorm:"type:timestamp"`
+	CreatedAt   Time           `json:"created_at" gorm:"type:timestamp"`
+	UpdatedAt   Time           `json:"updated_at" gorm:"type:timestamp"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
-	
+
 	// 关联
 	User User `json:"user" gorm:"foreignKey:UserID"`
 }

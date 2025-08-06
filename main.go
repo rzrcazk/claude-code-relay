@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -20,6 +21,9 @@ func main() {
 	if err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
+
+	// 设置全局时间格式
+	time.Local, _ = time.LoadLocation("Asia/Shanghai")
 
 	// 设置日志
 	common.SetupLogger()

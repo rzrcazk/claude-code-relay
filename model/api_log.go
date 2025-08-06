@@ -1,21 +1,17 @@
 package model
 
-import (
-	"time"
-)
-
 type ApiLog struct {
-	ID         uint      `json:"id" gorm:"primaryKey"`
-	Method     string    `json:"method" gorm:"not null"`
-	Path       string    `json:"path" gorm:"not null"`
-	StatusCode int       `json:"status_code"`
-	UserID     uint      `json:"user_id"`
-	IP         string    `json:"ip"`
-	UserAgent  string    `json:"user_agent"`
-	RequestID  string    `json:"request_id" gorm:"index"`
-	Duration   int64     `json:"duration"` // 毫秒
-	CreatedAt  time.Time `json:"created_at"`
-	
+	ID         uint   `json:"id" gorm:"primaryKey"`
+	Method     string `json:"method" gorm:"not null"`
+	Path       string `json:"path" gorm:"not null"`
+	StatusCode int    `json:"status_code"`
+	UserID     uint   `json:"user_id"`
+	IP         string `json:"ip"`
+	UserAgent  string `json:"user_agent"`
+	RequestID  string `json:"request_id" gorm:"index"`
+	Duration   int64  `json:"duration"` // 毫秒
+	CreatedAt  Time   `json:"created_at" gorm:"type:timestamp"`
+
 	// 关联
 	User User `json:"user" gorm:"foreignKey:UserID"`
 }
@@ -52,7 +48,7 @@ func GetApiLogsByUser(userID uint, page, limit int) ([]ApiLog, int64, error) {
 	var total int64
 
 	query := DB.Model(&ApiLog{}).Where("user_id = ?", userID)
-	
+
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err

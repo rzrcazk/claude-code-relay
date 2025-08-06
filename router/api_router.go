@@ -46,16 +46,6 @@ func SetAPIRouter(server *gin.Engine) {
 				user.PUT("/profile", controller.UpdateProfile)
 			}
 
-			// 任务相关
-			task := authenticated.Group("/tasks")
-			{
-				task.GET("", controller.GetTasks)
-				task.POST("", controller.CreateTask)
-				task.GET("/:id", controller.GetTask)
-				task.PUT("/:id", controller.UpdateTask)
-				task.DELETE("/:id", controller.DeleteTask)
-			}
-
 			// 分组相关
 			group := authenticated.Group("/groups")
 			{

@@ -90,7 +90,7 @@ func (s *UserService) GetProfile(user *model.User) *model.UserProfile {
 		Email:     user.Email,
 		Role:      user.Role,
 		Status:    user.Status,
-		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: user.CreatedAt.String(),
 	}
 }
 
