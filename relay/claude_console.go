@@ -138,7 +138,6 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
-	log.Println(usageTokens)
 	// 处理响应状态码并更新账号状态
 	go updateAccountStatus(account, resp.StatusCode, usageTokens)
 }
@@ -179,21 +178,26 @@ func updateAccountStatus(account *model.Account, statusCode int, usage *common.T
 
 		// 更新token使用量（如果有的话）
 		if usage != nil {
-			totalTokens := usage.InputTokens + usage.OutputTokens
 			if account.LastUsedTime != nil {
 				lastUsedDate := time.Time(*account.LastUsedTime).Format("2006-01-02")
 				todayDate := now.Format("2006-01-02")
 
 				if lastUsedDate == todayDate {
-					// 同一天，累加tokens
-					account.TodayUsageTokens += totalTokens
+					// 同一天，累加各类tokens
+					account.TodayInputTokens += usage.InputTokens
+					account.TodayOutputTokens += usage.OutputTokens
+					account.TodayCacheReadInputTokens += usage.CacheReadInputTokens
 				} else {
-					// 不同天，重置tokens
-					account.TodayUsageTokens = totalTokens
+					// 不同天，重置各类tokens
+					account.TodayInputTokens = usage.InputTokens
+					account.TodayOutputTokens = usage.OutputTokens
+					account.TodayCacheReadInputTokens = usage.CacheReadInputTokens
 				}
 			} else {
-				// 首次使用，设置tokens
-				account.TodayUsageTokens = totalTokens
+				// 首次使用，设置各类tokens
+				account.TodayInputTokens = usage.InputTokens
+				account.TodayOutputTokens = usage.OutputTokens
+				account.TodayCacheReadInputTokens = usage.CacheReadInputTokens
 			}
 		}
 

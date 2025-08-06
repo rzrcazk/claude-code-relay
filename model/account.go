@@ -5,29 +5,31 @@ import (
 )
 
 type Account struct {
-	ID               uint           `json:"id" gorm:"primaryKey"`
-	Name             string         `json:"name" gorm:"not null;comment:账号名称"`
-	PlatformType     string         `json:"platform_type" gorm:"not null;comment:平台类型(claude/claude_console)"`
-	RequestURL       string         `json:"request_url" gorm:"comment:请求地址"`
-	SecretKey        string         `json:"-" gorm:"comment:请求秘钥"`
-	AccessToken      string         `json:"-" gorm:"comment:claude的官方token"`
-	RefreshToken     string         `json:"-" gorm:"comment:claude的官方刷新token"`
-	ExpiresAt        int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
-	IsMax            bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
-	GroupID          int            `json:"group_id" gorm:"default:0;comment:分组ID"`
-	Priority         int            `json:"priority" gorm:"default:100;comment:优先级(数字越小越高)"`
-	Weight           int            `json:"weight" gorm:"default:100;comment:权重(数字越大越高)"`
-	TodayUsageCount  int            `json:"today_usage_count" gorm:"default:0;comment:今日使用次数"`
-	TodayUsageTokens int            `json:"today_usage_tokens" gorm:"default:0;comment:今日使用tokens"`
-	EnableProxy      bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
-	ProxyURI         string         `json:"proxy_uri" gorm:"comment:代理URI字符串"`
-	LastUsedTime     *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
-	CurrentStatus    int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
-	ActiveStatus     int            `json:"active_status" gorm:"default:1;comment:激活状态(1:激活,2:禁用)"`
-	UserID           uint           `json:"user_id" gorm:"not null;comment:所属用户ID"`
-	CreatedAt        Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt        Time           `json:"updated_at" gorm:"type:timestamp"`
-	DeletedAt        gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                        uint           `json:"id" gorm:"primaryKey"`
+	Name                      string         `json:"name" gorm:"not null;comment:账号名称"`
+	PlatformType              string         `json:"platform_type" gorm:"not null;comment:平台类型(claude/claude_console)"`
+	RequestURL                string         `json:"request_url" gorm:"comment:请求地址"`
+	SecretKey                 string         `json:"-" gorm:"comment:请求秘钥"`
+	AccessToken               string         `json:"-" gorm:"comment:claude的官方token"`
+	RefreshToken              string         `json:"-" gorm:"comment:claude的官方刷新token"`
+	ExpiresAt                 int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
+	IsMax                     bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
+	GroupID                   int            `json:"group_id" gorm:"default:0;comment:分组ID"`
+	Priority                  int            `json:"priority" gorm:"default:100;comment:优先级(数字越小越高)"`
+	Weight                    int            `json:"weight" gorm:"default:100;comment:权重(数字越大越高)"`
+	TodayUsageCount           int            `json:"today_usage_count" gorm:"default:0;comment:今日使用次数"`
+	TodayInputTokens          int            `json:"today_input_tokens" gorm:"default:0;comment:今日输入tokens"`
+	TodayOutputTokens         int            `json:"today_output_tokens" gorm:"default:0;comment:今日输出tokens"`
+	TodayCacheReadInputTokens int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
+	EnableProxy               bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
+	ProxyURI                  string         `json:"proxy_uri" gorm:"comment:代理URI字符串"`
+	LastUsedTime              *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
+	CurrentStatus             int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
+	ActiveStatus              int            `json:"active_status" gorm:"default:1;comment:激活状态(1:激活,2:禁用)"`
+	UserID                    uint           `json:"user_id" gorm:"not null;comment:所属用户ID"`
+	CreatedAt                 Time           `json:"created_at" gorm:"type:timestamp"`
+	UpdatedAt                 Time           `json:"updated_at" gorm:"type:timestamp"`
+	DeletedAt                 gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联用户
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
