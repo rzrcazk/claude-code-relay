@@ -153,3 +153,15 @@ func GetAccountsByUserID(userID uint) ([]Account, error) {
 	}
 	return accounts, nil
 }
+
+// 根据分组ID获取可用账号列表（按优先级和使用次数排序）
+func GetAvailableAccountsByGroupID(groupID int) ([]Account, error) {
+	var accounts []Account
+	err := DB.Where("group_id = ? AND current_status = 1 AND active_status = 1", groupID).
+		Order("priority ASC, today_usage_count ASC").
+		Find(&accounts).Error
+	if err != nil {
+		return nil, err
+	}
+	return accounts, nil
+}
