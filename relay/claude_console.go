@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"claude-code-relay/common"
 	"claude-code-relay/model"
+	"claude-code-relay/service"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -144,145 +145,12 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	}
 
 	// 处理响应状态码并更新账号状态
-	go updateAccountStatus(account, resp.StatusCode, usageTokens)
+	accountService := service.NewAccountService()
+	go accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
 
 	// 更新API Key统计信息
 	if apiKey != nil {
-		go updateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
-	}
-}
-
-// updateAccountStatus 根据响应状态码更新账号状态
-func updateAccountStatus(account *model.Account, statusCode int, usage *common.TokenUsage) {
-	// 根据状态码设置CurrentStatus
-	switch {
-	case statusCode == 429:
-		// 限流状态
-		account.CurrentStatus = 3
-	case statusCode > 400:
-		// 接口异常
-		account.CurrentStatus = 2
-	case statusCode == 200 || statusCode == 201:
-		// 正常状态
-		account.CurrentStatus = 1
-
-		// 请求成功时更新最后使用时间和今日使用次数
-		now := time.Now()
-
-		// 判断最后使用时间是否为当天
-		if account.LastUsedTime != nil {
-			lastUsedDate := time.Time(*account.LastUsedTime).Format("2006-01-02")
-			todayDate := now.Format("2006-01-02")
-
-			if lastUsedDate == todayDate {
-				// 同一天，使用次数+1
-				account.TodayUsageCount++
-			} else {
-				// 不同天，重置为1
-				account.TodayUsageCount = 1
-			}
-		} else {
-			// 首次使用，设置为1
-			account.TodayUsageCount = 1
-		}
-
-		// 更新token使用量（如果有的话）
-		if usage != nil {
-			if account.LastUsedTime != nil {
-				lastUsedDate := time.Time(*account.LastUsedTime).Format("2006-01-02")
-				todayDate := now.Format("2006-01-02")
-
-				if lastUsedDate == todayDate {
-					// 同一天，累加各类tokens
-					account.TodayInputTokens += usage.InputTokens
-					account.TodayOutputTokens += usage.OutputTokens
-					account.TodayCacheReadInputTokens += usage.CacheReadInputTokens
-				} else {
-					// 不同天，重置各类tokens
-					account.TodayInputTokens = usage.InputTokens
-					account.TodayOutputTokens = usage.OutputTokens
-					account.TodayCacheReadInputTokens = usage.CacheReadInputTokens
-				}
-			} else {
-				// 首次使用，设置各类tokens
-				account.TodayInputTokens = usage.InputTokens
-				account.TodayOutputTokens = usage.OutputTokens
-				account.TodayCacheReadInputTokens = usage.CacheReadInputTokens
-			}
-		}
-
-		// 更新最后使用时间
-		nowTime := model.Time(now)
-		account.LastUsedTime = &nowTime
-	default:
-		// 其他状态码保持原状态
-		return
-	}
-
-	// 更新数据库
-	if err := model.UpdateAccount(account); err != nil {
-		log.Printf("failed to update account status: %v", err)
-	}
-}
-
-// updateApiKeyStatus 根据响应状态码更新API Key统计信息
-func updateApiKeyStatus(apiKey *model.ApiKey, statusCode int, usage *common.TokenUsage) {
-	// 只在请求成功时更新API Key统计信息
-	if statusCode != 200 && statusCode != 201 {
-		return
-	}
-
-	now := time.Now()
-
-	// 判断最后使用时间是否为当天
-	if apiKey.LastUsedTime != nil {
-		lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
-		todayDate := now.Format("2006-01-02")
-
-		if lastUsedDate == todayDate {
-			// 同一天，使用次数+1
-			apiKey.TodayUsageCount++
-		} else {
-			// 不同天，重置为1
-			apiKey.TodayUsageCount = 1
-		}
-	} else {
-		// 首次使用，设置为1
-		apiKey.TodayUsageCount = 1
-	}
-
-	// 更新token使用量（如果有的话）
-	if usage != nil {
-		if apiKey.LastUsedTime != nil {
-			lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
-			todayDate := now.Format("2006-01-02")
-
-			if lastUsedDate == todayDate {
-				// 同一天，累加各类tokens
-				apiKey.TodayInputTokens += usage.InputTokens
-				apiKey.TodayOutputTokens += usage.OutputTokens
-				apiKey.TodayCacheReadInputTokens += usage.CacheReadInputTokens
-			} else {
-				// 不同天，重置各类tokens
-				apiKey.TodayInputTokens = usage.InputTokens
-				apiKey.TodayOutputTokens = usage.OutputTokens
-				apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
-			}
-		} else {
-			// 首次使用，设置各类tokens
-			apiKey.TodayInputTokens = usage.InputTokens
-			apiKey.TodayOutputTokens = usage.OutputTokens
-			apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
-		}
-	}
-
-	// 更新最后使用时间
-	nowTime := model.Time(now)
-	apiKey.LastUsedTime = &nowTime
-
-	// 更新数据库
-	if err := model.UpdateApiKey(apiKey); err != nil {
-		log.Printf("failed to update api key status: %v", err)
+		go service.UpdateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
 	}
 }
 

@@ -1,8 +1,10 @@
 package service
 
 import (
+	"claude-code-relay/common"
 	"claude-code-relay/model"
 	"errors"
+	"log"
 	"time"
 
 	"gorm.io/gorm"
@@ -149,4 +151,68 @@ func ValidateApiKey(key string) (*model.ApiKey, error) {
 	}
 
 	return apiKey, nil
+}
+
+// UpdateApiKeyStatus 根据响应状态码更新API Key统计信息
+func UpdateApiKeyStatus(apiKey *model.ApiKey, statusCode int, usage *common.TokenUsage) {
+	// 只在请求成功时更新API Key统计信息
+	if statusCode != 200 && statusCode != 201 {
+		return
+	}
+
+	now := time.Now()
+
+	// 判断最后使用时间是否为当天
+	if apiKey.LastUsedTime != nil {
+		lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
+		todayDate := now.Format("2006-01-02")
+
+		if lastUsedDate == todayDate {
+			// 同一天，使用次数+1
+			apiKey.TodayUsageCount++
+		} else {
+			// 不同天，重置为1
+			apiKey.TodayUsageCount = 1
+		}
+	} else {
+		// 首次使用，设置为1
+		apiKey.TodayUsageCount = 1
+	}
+
+	// 更新token使用量（如果有的话）
+	if usage != nil {
+		if apiKey.LastUsedTime != nil {
+			lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
+			todayDate := now.Format("2006-01-02")
+
+			if lastUsedDate == todayDate {
+				// 同一天，累加各类tokens
+				apiKey.TodayInputTokens += usage.InputTokens
+				apiKey.TodayOutputTokens += usage.OutputTokens
+				apiKey.TodayCacheReadInputTokens += usage.CacheReadInputTokens
+				apiKey.TodayCacheCreationInputTokens += usage.CacheCreationInputTokens
+			} else {
+				// 不同天，重置各类tokens
+				apiKey.TodayInputTokens = usage.InputTokens
+				apiKey.TodayOutputTokens = usage.OutputTokens
+				apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
+				apiKey.TodayCacheCreationInputTokens = usage.CacheCreationInputTokens
+			}
+		} else {
+			// 首次使用，设置各类tokens
+			apiKey.TodayInputTokens = usage.InputTokens
+			apiKey.TodayOutputTokens = usage.OutputTokens
+			apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
+			apiKey.TodayCacheCreationInputTokens = usage.CacheCreationInputTokens
+		}
+	}
+
+	// 更新最后使用时间
+	nowTime := model.Time(now)
+	apiKey.LastUsedTime = &nowTime
+
+	// 更新数据库
+	if err := model.UpdateApiKey(apiKey); err != nil {
+		log.Printf("failed to update api key status: %v", err)
+	}
 }

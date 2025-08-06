@@ -9,21 +9,22 @@ import (
 )
 
 type ApiKey struct {
-	ID                        uint           `json:"id" gorm:"primaryKey"`
-	Name                      string         `json:"name" gorm:"not null"`
-	Key                       string         `json:"-" gorm:"uniqueIndex;not null"`
-	ExpiresAt                 *Time          `json:"expires_at" gorm:"type:timestamp"`
-	Status                    int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
-	GroupID                   int            `json:"group_id" gorm:"default:0;index"`
-	UserID                    uint           `json:"user_id" gorm:"not null;index"`
-	TodayUsageCount           int            `json:"today_usage_count" gorm:"default:0;comment:今日使用次数"`
-	TodayInputTokens          int            `json:"today_input_tokens" gorm:"default:0;comment:今日输入tokens"`
-	TodayOutputTokens         int            `json:"today_output_tokens" gorm:"default:0;comment:今日输出tokens"`
-	TodayCacheReadInputTokens int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
-	LastUsedTime              *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
-	CreatedAt                 Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt                 Time           `json:"updated_at" gorm:"type:timestamp"`
-	DeletedAt                 gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                            uint           `json:"id" gorm:"primaryKey"`
+	Name                          string         `json:"name" gorm:"not null"`
+	Key                           string         `json:"-" gorm:"uniqueIndex;not null"`
+	ExpiresAt                     *Time          `json:"expires_at" gorm:"type:timestamp"`
+	Status                        int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
+	GroupID                       int            `json:"group_id" gorm:"default:0;index"`
+	UserID                        uint           `json:"user_id" gorm:"not null;index"`
+	TodayUsageCount               int            `json:"today_usage_count" gorm:"default:0;comment:今日使用次数"`
+	TodayInputTokens              int            `json:"today_input_tokens" gorm:"default:0;comment:今日输入tokens"`
+	TodayOutputTokens             int            `json:"today_output_tokens" gorm:"default:0;comment:今日输出tokens"`
+	TodayCacheReadInputTokens     int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
+	TodayCacheCreationInputTokens int            `json:"today_cache_creation_input_tokens" gorm:"default:0;comment:今日缓存创建输入tokens"`
+	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
+	CreatedAt                     Time           `json:"created_at" gorm:"type:timestamp"`
+	UpdatedAt                     Time           `json:"updated_at" gorm:"type:timestamp"`
+	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type CreateApiKeyRequest struct {
