@@ -11,9 +11,9 @@ type Account struct {
 	Name             string         `json:"name" gorm:"not null;comment:账号名称"`
 	PlatformType     string         `json:"platform_type" gorm:"not null;comment:平台类型(claude/claude_console)"`
 	RequestURL       string         `json:"request_url" gorm:"comment:请求地址"`
-	SecretKey        string         `json:"secret_key" gorm:"comment:请求秘钥"`
-	AccessToken      string         `json:"access_token" gorm:"comment:claude的官方token"`
-	RefreshToken     string         `json:"refresh_token" gorm:"comment:claude的官方刷新token"`
+	SecretKey        string         `json:"-" gorm:"comment:请求秘钥"`
+	AccessToken      string         `json:"-" gorm:"comment:claude的官方token"`
+	RefreshToken     string         `json:"-" gorm:"comment:claude的官方刷新token"`
 	ExpiresAt        int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
 	IsMax            bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
 	GroupID          int            `json:"group_id" gorm:"default:0;comment:分组ID"`
@@ -127,7 +127,7 @@ type AccountListResponse struct {
 type CreateAccountRequest struct {
 	Name         string `json:"name" binding:"required,min=1,max=100"`
 	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console gemini openai"`
-	RequestURL   string `json:"request_url" binding:"url"`
+	RequestURL   string `json:"request_url"`
 	SecretKey    string `json:"secret_key"`
 	GroupID      int    `json:"group_id"`
 	Priority     int    `json:"priority"`
@@ -135,7 +135,7 @@ type CreateAccountRequest struct {
 	EnableProxy  bool   `json:"enable_proxy"`
 	ProxyURI     string `json:"proxy_uri"`
 	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
-	IsMax        bool   `json:"is_max" binding:"required"` // 是否是max账号
+	IsMax        bool   `json:"is_max"` // 是否是max账号
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresAt    int    `json:"expires_at" binding:"min=0"`
