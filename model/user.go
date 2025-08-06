@@ -1,21 +1,21 @@
 package model
 
 import (
-	"claude-scheduler/common"
+	"claude-code-relay/common"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 type User struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Username  string    `json:"username" gorm:"uniqueIndex;not null"`
-	Email     string    `json:"email" gorm:"uniqueIndex;not null"`
-	Password  string    `json:"-" gorm:"not null"`
-	Status    int       `json:"status" gorm:"default:1"` // 1:启用 0:禁用
-	Role      string    `json:"role" gorm:"default:user"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uint           `json:"id" gorm:"primaryKey"`
+	Username  string         `json:"username" gorm:"uniqueIndex;not null"`
+	Email     string         `json:"email" gorm:"uniqueIndex;not null"`
+	Password  string         `json:"-" gorm:"not null"`
+	Status    int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
+	Role      string         `json:"role" gorm:"default:user"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
@@ -88,7 +88,7 @@ func init() {
 		if DB == nil {
 			return
 		}
-		
+
 		var count int64
 		DB.Model(&User{}).Count(&count)
 		if count == 0 {

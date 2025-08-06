@@ -1,9 +1,9 @@
 package service
 
 import (
-	"claude-scheduler/common"
-	"claude-scheduler/constant"
-	"claude-scheduler/model"
+	"claude-code-relay/common"
+	"claude-code-relay/constant"
+	"claude-code-relay/model"
 	"time"
 )
 
@@ -21,10 +21,10 @@ func (ts *TaskScheduler) Start() {
 	if ts.running {
 		return
 	}
-	
+
 	ts.running = true
 	common.SysLog("Task scheduler started")
-	
+
 	// 启动定时任务处理器
 	go ts.processScheduledTasks()
 }
@@ -65,7 +65,7 @@ func (ts *TaskScheduler) executePendingTasks() {
 
 func (ts *TaskScheduler) executeTask(task model.Task) {
 	common.SysLog("Executing task: " + task.Title)
-	
+
 	// 更新任务状态为运行中
 	err := model.UpdateTaskStatus(task.ID, constant.TaskStatusRunning)
 	if err != nil {
@@ -78,7 +78,7 @@ func (ts *TaskScheduler) executeTask(task model.Task) {
 
 	// 这里可以根据具体的任务类型执行不同的逻辑
 	// 目前只是简单的模拟执行完成
-	
+
 	// 更新任务状态为已完成
 	err = model.UpdateTaskStatus(task.ID, constant.TaskStatusCompleted)
 	if err != nil {

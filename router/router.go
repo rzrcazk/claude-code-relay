@@ -1,8 +1,8 @@
 package router
 
 import (
-	"claude-scheduler/controller"
-	"claude-scheduler/middleware"
+	"claude-code-relay/controller"
+	"claude-code-relay/middleware"
 	"net/http"
 	"time"
 

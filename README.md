@@ -14,7 +14,7 @@
 ## 📁 项目结构
 
 ```
-claude-scheduler/
+claude-code-relay/
 ├── common/          # 通用工具包
 │   ├── logger.go    # 日志工具
 │   ├── redis.go     # Redis连接

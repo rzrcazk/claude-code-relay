@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"claude-scheduler/common"
+	"claude-code-relay/common"
 	"context"
 	"fmt"
 	"net/http"

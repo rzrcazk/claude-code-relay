@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"claude-scheduler/common"
+	"claude-code-relay/common"
 
 	"github.com/gin-gonic/gin"
 )

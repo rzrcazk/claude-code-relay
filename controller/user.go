@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"claude-scheduler/common"
-	"claude-scheduler/constant"
-	"claude-scheduler/model"
+	"claude-code-relay/common"
+	"claude-code-relay/constant"
+	"claude-code-relay/model"
 	"net/http"
 	"strconv"
 
@@ -153,7 +153,7 @@ func GetProfile(c *gin.Context) {
 				"email":      user.Email,
 				"role":       user.Role,
 				"status":     user.Status,
-				"created_at": user.CreatedAt,
+				"created_at": user.CreatedAt.Format("2006-01-02 15:04:05"),
 			},
 		},
 	})

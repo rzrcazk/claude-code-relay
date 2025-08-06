@@ -12,7 +12,7 @@ import (
 func GetSessionSecret() string {
 	secret := os.Getenv("SESSION_SECRET")
 	if secret == "" {
-		secret = "claude-scheduler-default-secret"
+		secret = "claude-code-relay-default-secret"
 	}
 	return secret
 }

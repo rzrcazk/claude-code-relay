@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-var jwtSecret = []byte(GetEnvDefault("JWT_SECRET", "claude-scheduler-secret"))
+var jwtSecret = []byte(GetEnvDefault("JWT_SECRET", "claude-code-relay-secret"))
 
 type Claims struct {
 	UserID   uint   `json:"user_id"`

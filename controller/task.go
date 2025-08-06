@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"claude-scheduler/constant"
-	"claude-scheduler/model"
+	"claude-code-relay/constant"
+	"claude-code-relay/model"
 	"net/http"
 	"strconv"
 	"time"

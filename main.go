@@ -1,10 +1,10 @@
 package main
 
 import (
-	"claude-scheduler/common"
-	"claude-scheduler/middleware"
-	"claude-scheduler/model"
-	"claude-scheduler/router"
+	"claude-code-relay/common"
+	"claude-code-relay/middleware"
+	"claude-code-relay/model"
+	"claude-code-relay/router"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,7 +25,7 @@ func main() {
 
 	// 设置日志
 	common.SetupLogger()
-	common.SysLog("Claude Scheduler v1.0.0 started")
+	common.SysLog("Claude Code Relay v1.0.0 started")
 
 	// 设置Gin模式
 	if os.Getenv("GIN_MODE") != "debug" {

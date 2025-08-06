@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"claude-scheduler/constant"
-	"claude-scheduler/model"
+	"claude-code-relay/constant"
+	"claude-code-relay/model"
 	"net/http"
 	"strconv"
 
@@ -55,7 +55,7 @@ func GetApiLogs(c *gin.Context) {
 func GetDashboard(c *gin.Context) {
 	// 获取统计数据
 	var userCount, taskCount, completedTaskCount int64
-	
+
 	model.DB.Model(&model.User{}).Count(&userCount)
 	model.DB.Model(&model.Task{}).Count(&taskCount)
 	model.DB.Model(&model.Task{}).Where("status = ?", constant.TaskStatusCompleted).Count(&completedTaskCount)

@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"claude-scheduler/model"
+	"claude-code-relay/model"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,18 +11,18 @@ func SetUpLogger(server *gin.Engine) {
 	server.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return ""
 	}))
-	
+
 	server.Use(ApiLogger())
 }
 
 func ApiLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		
+
 		c.Next()
-		
+
 		duration := time.Since(start)
-		
+
 		// 获取用户ID（如果已认证）
 		var userID uint
 		if uid, exists := c.Get("user_id"); exists {
@@ -49,7 +49,7 @@ func ApiLogger() gin.HandlerFunc {
 			RequestID:  requestIDStr,
 			Duration:   duration.Milliseconds(),
 		}
-		
+
 		// 异步记录日志，避免阻塞请求
 		go func() {
 			_ = model.CreateApiLog(apiLog)

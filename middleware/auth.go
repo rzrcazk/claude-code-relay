@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"claude-scheduler/common"
-	"claude-scheduler/model"
+	"claude-code-relay/common"
+	"claude-code-relay/model"
 	"net/http"
 	"strings"
 

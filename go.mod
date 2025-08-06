@@ -1,4 +1,4 @@
-module claude-scheduler
+module claude-code-relay
 
 go 1.18
 

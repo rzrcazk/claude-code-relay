@@ -1,7 +1,7 @@
 package model
 
 import (
-	"claude-scheduler/common"
+	"claude-code-relay/common"
 	"os"
 
 	"gorm.io/driver/sqlite"
