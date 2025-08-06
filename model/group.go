@@ -15,6 +15,25 @@ type Group struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
+type CreateGroupRequest struct {
+	Name   string `json:"name" binding:"required"`
+	Remark string `json:"remark"`
+	Status int    `json:"status"`
+}
+
+type UpdateGroupRequest struct {
+	Name   string `json:"name"`
+	Remark string `json:"remark"`
+	Status *int   `json:"status"`
+}
+
+type GroupListResult struct {
+	Groups []Group `json:"groups"`
+	Total  int64   `json:"total"`
+	Page   int     `json:"page"`
+	Limit  int     `json:"limit"`
+}
+
 func (g *Group) TableName() string {
 	return "groups"
 }
@@ -30,7 +49,7 @@ func CreateGroup(group *Group) error {
 	return DB.Create(group).Error
 }
 
-func GetGroupById(id uint, userID uint) (*Group, error) {
+func GetGroupById(id int, userID uint) (*Group, error) {
 	var group Group
 	err := DB.Where("id = ? AND user_id = ?", id, userID).First(&group).Error
 	if err != nil {
@@ -72,23 +91,4 @@ func GetGroups(page, limit int, userID uint) ([]Group, int64, error) {
 	}
 
 	return groups, total, nil
-}
-
-type CreateGroupRequest struct {
-	Name   string `json:"name" binding:"required"`
-	Remark string `json:"remark"`
-	Status int    `json:"status"`
-}
-
-type UpdateGroupRequest struct {
-	Name   string `json:"name"`
-	Remark string `json:"remark"`
-	Status *int   `json:"status"`
-}
-
-type GroupListResult struct {
-	Groups []Group `json:"groups"`
-	Total  int64   `json:"total"`
-	Page   int     `json:"page"`
-	Limit  int     `json:"limit"`
 }

@@ -73,6 +73,16 @@ func SetAPIRouter(server *gin.Engine) {
 				oauth.POST("/exchange-code", controller.ExchangeCode)   // 验证授权码并获取token
 			}
 
+			// API Key 相关
+			apikey := authenticated.Group("/api-keys")
+			{
+				apikey.GET("/list", controller.GetApiKeys)            // 获取API Key列表
+				apikey.POST("/create", controller.CreateApiKey)       // 创建API Key
+				apikey.GET("/detail/:id", controller.GetApiKey)       // 获取API Key详情
+				apikey.PUT("/update/:id", controller.UpdateApiKey)    // 更新API Key
+				apikey.DELETE("/delete/:id", controller.DeleteApiKey) // 删除API Key
+			}
+
 			// 管理员接口
 			admin := authenticated.Group("/admin")
 			admin.Use(middleware.AdminAuth())

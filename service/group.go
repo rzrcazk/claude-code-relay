@@ -43,12 +43,12 @@ func CreateGroup(req *model.CreateGroupRequest, userID uint) (*model.Group, erro
 }
 
 func GetGroup(id string, userID uint) (*model.Group, error) {
-	groupId, err := strconv.ParseUint(id, 10, 32)
+	groupId, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, errors.New("无效的组ID")
 	}
 
-	group, err := model.GetGroupById(uint(groupId), userID)
+	group, err := model.GetGroupById(groupId, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("组不存在")

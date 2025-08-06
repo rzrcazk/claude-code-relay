@@ -33,6 +33,54 @@ type Account struct {
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 }
 
+// 账号列表请求参数
+type AccountListRequest struct {
+	Page   int   `json:"page" form:"page" binding:"min=1"`
+	Limit  int   `json:"limit" form:"limit" binding:"min=1,max=100"`
+	UserID *uint `json:"user_id" form:"user_id"`
+}
+
+// 账号列表响应结构
+type AccountListResponse struct {
+	Accounts []Account `json:"accounts"`
+	Total    int64     `json:"total"`
+	Page     int       `json:"page"`
+	Limit    int       `json:"limit"`
+}
+
+// 账号创建请求参数
+type CreateAccountRequest struct {
+	Name         string `json:"name" binding:"required,min=1,max=100"`
+	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console gemini openai"`
+	RequestURL   string `json:"request_url"`
+	SecretKey    string `json:"secret_key"`
+	GroupID      int    `json:"group_id"`
+	Priority     int    `json:"priority"`
+	Weight       int    `json:"weight" binding:"min=1"`
+	EnableProxy  bool   `json:"enable_proxy"`
+	ProxyURI     string `json:"proxy_uri"`
+	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
+	IsMax        bool   `json:"is_max"` // 是否是max账号
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    int    `json:"expires_at" binding:"min=0"`
+}
+
+// 账号更新请求参数
+type UpdateAccountRequest struct {
+	Name         string `json:"name" binding:"required,min=1,max=100"`
+	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console"`
+	RequestURL   string `json:"request_url" binding:"required,url"`
+	SecretKey    string `json:"secret_key" binding:"required"`
+	GroupID      int    `json:"group_id"`
+	Priority     int    `json:"priority"`
+	Weight       int    `json:"weight" binding:"min=1"`
+	EnableProxy  bool   `json:"enable_proxy"`
+	ProxyURI     string `json:"proxy_uri"`
+	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
+	IsMax        bool   `json:"is_max"` // 是否是max账号
+}
+
 func (a *Account) TableName() string {
 	return "accounts"
 }
@@ -104,52 +152,4 @@ func GetAccountsByUserID(userID uint) ([]Account, error) {
 		return nil, err
 	}
 	return accounts, nil
-}
-
-// 账号列表请求参数
-type AccountListRequest struct {
-	Page   int   `json:"page" form:"page" binding:"min=1"`
-	Limit  int   `json:"limit" form:"limit" binding:"min=1,max=100"`
-	UserID *uint `json:"user_id" form:"user_id"`
-}
-
-// 账号列表响应结构
-type AccountListResponse struct {
-	Accounts []Account `json:"accounts"`
-	Total    int64     `json:"total"`
-	Page     int       `json:"page"`
-	Limit    int       `json:"limit"`
-}
-
-// 账号创建请求参数
-type CreateAccountRequest struct {
-	Name         string `json:"name" binding:"required,min=1,max=100"`
-	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console gemini openai"`
-	RequestURL   string `json:"request_url"`
-	SecretKey    string `json:"secret_key"`
-	GroupID      int    `json:"group_id"`
-	Priority     int    `json:"priority"`
-	Weight       int    `json:"weight" binding:"min=1"`
-	EnableProxy  bool   `json:"enable_proxy"`
-	ProxyURI     string `json:"proxy_uri"`
-	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
-	IsMax        bool   `json:"is_max"` // 是否是max账号
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresAt    int    `json:"expires_at" binding:"min=0"`
-}
-
-// 账号更新请求参数
-type UpdateAccountRequest struct {
-	Name         string `json:"name" binding:"required,min=1,max=100"`
-	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console"`
-	RequestURL   string `json:"request_url" binding:"required,url"`
-	SecretKey    string `json:"secret_key" binding:"required"`
-	GroupID      int    `json:"group_id"`
-	Priority     int    `json:"priority"`
-	Weight       int    `json:"weight" binding:"min=1"`
-	EnableProxy  bool   `json:"enable_proxy"`
-	ProxyURI     string `json:"proxy_uri"`
-	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
-	IsMax        bool   `json:"is_max"` // 是否是max账号
 }
