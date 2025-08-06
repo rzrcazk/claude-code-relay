@@ -25,12 +25,18 @@ const (
 	CacheKeyTask = "task:"
 
 	// API响应码
-	Success              = 20000
-	InvalidParams        = 40000
-	Unauthorized         = 40001
-	UserStatusAbnormal   = 40002
+	Success                = 20000
+	InvalidParams          = 40000
+	Unauthorized           = 40001
+	UserStatusAbnormal     = 40002
 	InsufficientPrivileges = 40003
-	NotFound             = 40004
-	TooManyRequests      = 42901
-	InternalServerError  = 50000
+	NotFound               = 40004
+	TooManyRequests        = 42901
+	InternalServerError    = 50000
+
+	// 平台类型
+	PlatformClaude        = "claude"
+	PlatformClaudeConsole = "claude_console"
+	PlatformOpenAI        = "openai"
+	PlatformGemini        = "gemini"
 )

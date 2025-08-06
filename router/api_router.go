@@ -56,6 +56,16 @@ func SetAPIRouter(server *gin.Engine) {
 				task.DELETE("/:id", controller.DeleteTask)
 			}
 
+			// 账号管理相关
+			account := authenticated.Group("/accounts")
+			{
+				account.GET("", controller.GetAccountList)       // 获取账号列表
+				account.POST("", controller.CreateAccount)       // 创建账号
+				account.GET("/:id", controller.GetAccount)       // 获取账号详情
+				account.PUT("/:id", controller.UpdateAccount)    // 更新账号
+				account.DELETE("/:id", controller.DeleteAccount) // 删除账号
+			}
+
 			// 管理员接口
 			admin := authenticated.Group("/admin")
 			admin.Use(middleware.AdminAuth())

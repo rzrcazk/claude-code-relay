@@ -35,6 +35,7 @@ func InitDB() error {
 		&User{},
 		&Task{},
 		&ApiLog{},
+		&Account{},
 	)
 	if err != nil {
 		return err
