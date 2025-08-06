@@ -21,6 +21,13 @@ type RegisterRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
+type UpdateProfileRequest struct {
+	Username string `json:"username"`
+	Email    string `json:"email" binding:"omitempty,email"`
+	Password string `json:"password" binding:"omitempty,min=6"`
+}
+
+// Login 用户登录
 func Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,6 +64,7 @@ func Login(c *gin.Context) {
 	})
 }
 
+// Register 新用户注册
 func Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -92,6 +100,7 @@ func Register(c *gin.Context) {
 	})
 }
 
+// GetProfile 获取用户信息
 func GetProfile(c *gin.Context) {
 	user := c.MustGet("user").(*model.User)
 
@@ -107,6 +116,46 @@ func GetProfile(c *gin.Context) {
 	})
 }
 
+// UpdateProfile 更新用户信息
+func UpdateProfile(c *gin.Context) {
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	user := c.MustGet("user").(*model.User)
+	userService := service.NewUserService()
+
+	err := userService.UpdateProfile(user, req.Username, req.Email, req.Password)
+	if err != nil {
+		var statusCode int
+		var code int
+		switch err.Error() {
+		case "用户名已存在", "邮箱已存在":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		default:
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新成功",
+		"code":    constant.Success,
+	})
+}
+
+// GetUsers 获取用户列表
 func GetUsers(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))

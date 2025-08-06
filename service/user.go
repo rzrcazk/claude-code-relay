@@ -94,6 +94,37 @@ func (s *UserService) GetProfile(user *model.User) *model.UserProfile {
 	}
 }
 
+// UpdateProfile 更新用户信息
+func (s *UserService) UpdateProfile(currentUser *model.User, username, email, password string) error {
+	// 如果要更新用户名，检查是否已存在
+	if username != "" && username != currentUser.Username {
+		if _, err := model.GetUserByUsername(username); err == nil {
+			return errors.New("用户名已存在")
+		}
+		currentUser.Username = username
+	}
+
+	// 如果要更新邮箱，检查是否已存在
+	if email != "" && email != currentUser.Email {
+		if _, err := model.GetUserByEmail(email); err == nil {
+			return errors.New("邮箱已存在")
+		}
+		currentUser.Email = email
+	}
+
+	// 如果要更新密码，进行加密
+	if password != "" {
+		currentUser.Password = common.HashPassword(password)
+	}
+
+	// 保存更新
+	if err := model.UpdateUser(currentUser); err != nil {
+		return errors.New("更新失败")
+	}
+
+	return nil
+}
+
 func (s *UserService) GetUsers(page, limit int) (*model.UserListResult, error) {
 	if page < 1 {
 		page = 1

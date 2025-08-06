@@ -43,6 +43,7 @@ func SetAPIRouter(server *gin.Engine) {
 			user := authenticated.Group("/user")
 			{
 				user.GET("/profile", controller.GetProfile)
+				user.PUT("/profile", controller.UpdateProfile)
 			}
 
 			// 任务相关
