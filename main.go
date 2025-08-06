@@ -5,10 +5,13 @@ import (
 	"claude-code-relay/middleware"
 	"claude-code-relay/model"
 	"claude-code-relay/router"
+	"claude-code-relay/service"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +54,10 @@ func main() {
 		common.FatalLog("failed to initialize Redis: " + err.Error())
 	}
 
+	// 初始化定时任务服务
+	service.InitCronService()
+	defer service.StopCronService()
+
 	// 初始化HTTP服务器
 	server := gin.New()
 	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
@@ -83,9 +90,24 @@ func main() {
 		port = "8080"
 	}
 
-	common.SysLog("Server starting on port " + port)
-	err = server.Run(":" + port)
-	if err != nil {
-		common.FatalLog("failed to start HTTP server: " + err.Error())
-	}
+	// 设置信号处理，优雅关闭
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		common.SysLog("Server starting on port " + port)
+		err = server.Run(":" + port)
+		if err != nil {
+			common.FatalLog("failed to start HTTP server: " + err.Error())
+		}
+	}()
+
+	// 等待退出信号
+	<-quit
+	common.SysLog("Shutting down server...")
+
+	// 停止定时任务服务
+	service.StopCronService()
+
+	common.SysLog("Server stopped gracefully")
 }
