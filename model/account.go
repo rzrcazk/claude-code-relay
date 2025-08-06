@@ -22,10 +22,10 @@ type Account struct {
 	TodayOutputTokens             int            `json:"today_output_tokens" gorm:"default:0;comment:今日输出tokens"`
 	TodayCacheReadInputTokens     int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
 	TodayCacheCreationInputTokens int            `json:"today_cache_creation_input_tokens" gorm:"default:0;comment:今日缓存创建输入tokens"`
-	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;type:decimal(10,6);comment:今日使用总费用(USD)"`
+	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;comment:今日使用总费用(USD)"`
 	EnableProxy                   bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
 	ProxyURI                      string         `json:"proxy_uri" gorm:"comment:代理URI字符串"`
-	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
+	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:timestamp"`
 	CurrentStatus                 int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
 	ActiveStatus                  int            `json:"active_status" gorm:"default:1;comment:激活状态(1:激活,2:禁用)"`
 	UserID                        uint           `json:"user_id" gorm:"not null;comment:所属用户ID"`

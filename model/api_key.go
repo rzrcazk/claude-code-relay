@@ -21,8 +21,8 @@ type ApiKey struct {
 	TodayOutputTokens             int            `json:"today_output_tokens" gorm:"default:0;comment:今日输出tokens"`
 	TodayCacheReadInputTokens     int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
 	TodayCacheCreationInputTokens int            `json:"today_cache_creation_input_tokens" gorm:"default:0;comment:今日缓存创建输入tokens"`
-	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;type:decimal(10,6);comment:今日使用总费用(USD)"`
-	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间" gorm:"type:timestamp"`
+	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;comment:今日使用总费用(USD)"`
+	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:timestamp"`
 	CreatedAt                     Time           `json:"created_at" gorm:"type:timestamp"`
 	UpdatedAt                     Time           `json:"updated_at" gorm:"type:timestamp"`
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
