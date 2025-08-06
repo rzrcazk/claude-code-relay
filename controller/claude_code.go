@@ -3,6 +3,7 @@ package controller
 import (
 	"claude-code-relay/common"
 	"claude-code-relay/constant"
+	"claude-code-relay/model"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -70,5 +71,20 @@ func ExchangeCode(c *gin.Context) {
 
 // GetMessages 获取对话消息
 func GetMessages(c *gin.Context) {
+	// 获取API Key对象
+	apiKey, exists := c.Get("api_key")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "未找到API Key信息",
+			"code":  constant.Unauthorized,
+		})
+		return
+	}
+	keyInfo := apiKey.(*model.ApiKey)
 
+	c.JSON(http.StatusOK, gin.H{
+		"message": "操作成功",
+		"code":    constant.Success,
+		"data":    keyInfo,
+	})
 }
