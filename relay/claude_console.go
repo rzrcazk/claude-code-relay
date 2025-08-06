@@ -19,6 +19,11 @@ import (
 
 // HandleClaudeConsoleRequest 处理Claude Console平台的请求
 func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
+	// 从上下文中获取API Key信息
+	var apiKey *model.ApiKey
+	if keyInfo, exists := c.Get("api_key"); exists {
+		apiKey = keyInfo.(*model.ApiKey)
+	}
 	ctx := c.Request.Context()
 
 	body, err := io.ReadAll(c.Request.Body)
@@ -140,6 +145,11 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 
 	// 处理响应状态码并更新账号状态
 	go updateAccountStatus(account, resp.StatusCode, usageTokens)
+
+	// 更新API Key统计信息
+	if apiKey != nil {
+		go updateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
+	}
 }
 
 // updateAccountStatus 根据响应状态码更新账号状态
@@ -212,6 +222,67 @@ func updateAccountStatus(account *model.Account, statusCode int, usage *common.T
 	// 更新数据库
 	if err := model.UpdateAccount(account); err != nil {
 		log.Printf("failed to update account status: %v", err)
+	}
+}
+
+// updateApiKeyStatus 根据响应状态码更新API Key统计信息
+func updateApiKeyStatus(apiKey *model.ApiKey, statusCode int, usage *common.TokenUsage) {
+	// 只在请求成功时更新API Key统计信息
+	if statusCode != 200 && statusCode != 201 {
+		return
+	}
+
+	now := time.Now()
+
+	// 判断最后使用时间是否为当天
+	if apiKey.LastUsedTime != nil {
+		lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
+		todayDate := now.Format("2006-01-02")
+
+		if lastUsedDate == todayDate {
+			// 同一天，使用次数+1
+			apiKey.TodayUsageCount++
+		} else {
+			// 不同天，重置为1
+			apiKey.TodayUsageCount = 1
+		}
+	} else {
+		// 首次使用，设置为1
+		apiKey.TodayUsageCount = 1
+	}
+
+	// 更新token使用量（如果有的话）
+	if usage != nil {
+		if apiKey.LastUsedTime != nil {
+			lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
+			todayDate := now.Format("2006-01-02")
+
+			if lastUsedDate == todayDate {
+				// 同一天，累加各类tokens
+				apiKey.TodayInputTokens += usage.InputTokens
+				apiKey.TodayOutputTokens += usage.OutputTokens
+				apiKey.TodayCacheReadInputTokens += usage.CacheReadInputTokens
+			} else {
+				// 不同天，重置各类tokens
+				apiKey.TodayInputTokens = usage.InputTokens
+				apiKey.TodayOutputTokens = usage.OutputTokens
+				apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
+			}
+		} else {
+			// 首次使用，设置各类tokens
+			apiKey.TodayInputTokens = usage.InputTokens
+			apiKey.TodayOutputTokens = usage.OutputTokens
+			apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
+		}
+	}
+
+	// 更新最后使用时间
+	nowTime := model.Time(now)
+	apiKey.LastUsedTime = &nowTime
+
+	// 更新数据库
+	if err := model.UpdateApiKey(apiKey); err != nil {
+		log.Printf("failed to update api key status: %v", err)
 	}
 }
 
