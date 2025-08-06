@@ -14,7 +14,7 @@ var DB *gorm.DB
 func InitDB() error {
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "./data/scheduler.db"
+		dbPath = "./data/data.db"
 	}
 
 	// 确保数据目录存在
@@ -38,6 +38,7 @@ func InitDB() error {
 		&Account{},
 		&Group{},
 		&ApiKey{},
+		&Log{},
 	)
 	if err != nil {
 		return err

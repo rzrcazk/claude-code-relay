@@ -20,6 +20,9 @@ import (
 
 // HandleClaudeConsoleRequest 处理Claude Console平台的请求
 func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
+	// 记录请求开始时间用于计算耗时
+	startTime := time.Now()
+
 	// 从上下文中获取API Key信息
 	var apiKey *model.ApiKey
 	if keyInfo, exists := c.Get("api_key"); exists {
@@ -126,22 +129,11 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
-	// 检查是否是流式响应
-	isStream = gjson.GetBytes(body, "stream").Bool()
+	// 解析token使用量
 	var usageTokens *common.TokenUsage
-
-	if isStream && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		// 流式响应，需要解析token使用量
-		usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
-		if err != nil {
-			log.Println("stream copy and parse failed:", err.Error())
-		}
-	} else {
-		// 非流式响应，直接转发
-		_, err = io.Copy(c.Writer, resp.Body)
-		if err != nil {
-			log.Println("response copy failed:", err.Error())
-		}
+	usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
+	if err != nil {
+		log.Println("stream copy and parse failed:", err.Error())
 	}
 
 	// 处理响应状态码并更新账号状态
@@ -151,6 +143,18 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	// 更新API Key统计信息
 	if apiKey != nil {
 		go service.UpdateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
+	}
+
+	// 保存日志记录（仅在请求成功时记录）
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 && usageTokens != nil && apiKey != nil {
+		duration := time.Since(startTime).Milliseconds()
+		logService := service.NewLogService()
+		go func() {
+			_, err := logService.CreateLogFromTokenUsage(usageTokens, apiKey.UserID, apiKey.ID, duration, isStream)
+			if err != nil {
+				log.Printf("保存日志失败: %v", err)
+			}
+		}()
 	}
 }
 
