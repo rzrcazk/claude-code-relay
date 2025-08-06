@@ -4,6 +4,8 @@ import (
 	"claude-code-relay/common"
 	"claude-code-relay/model"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -27,6 +29,13 @@ func (s *CronService) Start() {
 	_, err := s.cron.AddFunc("0 0 0 * * *", s.resetDailyStats)
 	if err != nil {
 		log.Printf("Failed to add daily reset cron job: %v", err)
+		return
+	}
+
+	// 每天凌晨1点清理过期日志
+	_, err = s.cron.AddFunc("0 0 1 * * *", s.cleanExpiredLogs)
+	if err != nil {
+		log.Printf("Failed to add log cleanup cron job: %v", err)
 		return
 	}
 
@@ -148,4 +157,55 @@ func StopCronService() {
 	if GlobalCronService != nil {
 		GlobalCronService.Stop()
 	}
+}
+
+// cleanExpiredLogs 清理过期日志
+func (s *CronService) cleanExpiredLogs() {
+	startTime := time.Now()
+	common.SysLog("Starting expired logs cleanup task")
+
+	// 从环境变量获取日志保留月数，默认为3个月
+	retentionMonths := getLogRetentionMonths()
+
+	logService := NewLogService()
+	deletedCount, err := logService.DeleteExpiredLogs(retentionMonths)
+	if err != nil {
+		common.SysError("Failed to clean expired logs: " + err.Error())
+	} else {
+		common.SysLog("Cleaned expired logs successfully, deleted " + strconv.FormatInt(deletedCount, 10) + " records (older than " + strconv.Itoa(retentionMonths) + " months)")
+	}
+
+	duration := time.Since(startTime)
+	common.SysLog("Expired logs cleanup task completed in " + duration.String())
+}
+
+// getLogRetentionMonths 从环境变量获取日志保留月数
+func getLogRetentionMonths() int {
+	monthsStr := os.Getenv("LOG_RETENTION_MONTHS")
+	if monthsStr == "" {
+		return 3 // 默认保留3个月
+	}
+
+	months, err := strconv.Atoi(monthsStr)
+	if err != nil || months <= 0 {
+		log.Printf("Invalid LOG_RETENTION_MONTHS value: %s, using default value 3", monthsStr)
+		return 3
+	}
+
+	return months
+}
+
+// ManualCleanExpiredLogs 手动清理过期日志（用于测试或管理员操作）
+func (s *CronService) ManualCleanExpiredLogs() (int64, error) {
+	common.SysLog("Manual expired logs cleanup triggered")
+
+	retentionMonths := getLogRetentionMonths()
+	logService := NewLogService()
+	deletedCount, err := logService.DeleteExpiredLogs(retentionMonths)
+	if err != nil {
+		return 0, err
+	}
+
+	common.SysLog("Manual expired logs cleanup completed, deleted " + strconv.FormatInt(deletedCount, 10) + " records")
+	return deletedCount, nil
 }

@@ -2,6 +2,7 @@ package model
 
 import (
 	"claude-code-relay/common"
+	"errors"
 	"strconv"
 	"time"
 )
@@ -279,4 +280,22 @@ func DeleteLogById(id string) error {
 // DeleteLogsByUser 删除指定用户的所有日志记录
 func DeleteLogsByUser(userID uint) error {
 	return DB.Where("user_id = ?", userID).Delete(&Log{}).Error
+}
+
+// DeleteExpiredLogs 删除过期的日志记录
+func DeleteExpiredLogs(months int) (int64, error) {
+	if months <= 0 {
+		return 0, errors.New("月数必须大于0")
+	}
+
+	// 计算cutoff时间：当前时间减去指定月数
+	cutoffTime := time.Now().AddDate(0, -months, 0)
+
+	// 删除创建时间早于cutoff时间的日志
+	result := DB.Where("created_at < ?", cutoffTime).Delete(&Log{})
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	return result.RowsAffected, nil
 }

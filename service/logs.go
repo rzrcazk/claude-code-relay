@@ -189,3 +189,17 @@ func (s *LogService) DeleteLogsByUser(userID uint) error {
 
 	return nil
 }
+
+// DeleteExpiredLogs 删除过期的日志记录
+func (s *LogService) DeleteExpiredLogs(months int) (int64, error) {
+	if months <= 0 {
+		return 0, errors.New("保留月数必须大于0")
+	}
+
+	deletedCount, err := model.DeleteExpiredLogs(months)
+	if err != nil {
+		return 0, errors.New("删除过期日志失败: " + err.Error())
+	}
+
+	return deletedCount, nil
+}
