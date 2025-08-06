@@ -9,9 +9,9 @@ import (
 
 // GetOAuthURL 获取OAuth授权URL
 func GetOAuthURL(c *gin.Context) {
-	helper := common.NewOAuthHelper(nil)
+	oauthHelper := common.NewOAuthHelper(nil)
 	// 生成OAuth参数
-	params, err := helper.GenerateOAuthParams()
+	params, err := oauthHelper.GenerateOAuthParams()
 	if err != nil {
 		// 处理错误
 	}
