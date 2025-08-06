@@ -70,6 +70,7 @@ func SetAPIRouter(server *gin.Engine) {
 			oauth := authenticated.Group("/oauth")
 			{
 				oauth.GET("/generate-auth-url", controller.GetOAuthURL) // 获取OAuth授权URL
+				oauth.GET("/exchange-code", controller.ExchangeCode)    // 验证授权码并获取token
 			}
 
 			// 管理员接口

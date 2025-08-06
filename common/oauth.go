@@ -1,11 +1,15 @@
 package common
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -237,6 +241,129 @@ func (o *OAuthHelper) ValidateState(receivedState, expectedState string) bool {
 // IsTokenExpired 检查token是否过期
 func (o *OAuthHelper) IsTokenExpired(expiresAt int64) bool {
 	return time.Now().UnixMilli() >= expiresAt
+}
+
+// ExchangeCodeForTokens 使用授权码交换访问令牌
+func (o *OAuthHelper) ExchangeCodeForTokens(authorizationCode, codeVerifier, state, proxyURI string) (*TokenResponse, error) {
+	// 创建HTTP客户端
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// 如果提供了代理URI，配置代理
+	if proxyURI != "" {
+		proxyURL, err := url.Parse(proxyURI)
+		if err != nil {
+			return nil, fmt.Errorf("invalid proxy URI: %w", err)
+		}
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+		client.Transport = transport
+		SysLog(fmt.Sprintf("Using proxy: %s", proxyURI))
+	}
+
+	// 创建请求参数
+	params := o.CreateTokenExchangeParams(authorizationCode, codeVerifier, state)
+
+	// 将参数转换为JSON
+	jsonData, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request params: %w", err)
+	}
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", o.config.TokenURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// 设置请求头
+	headers := o.GetTokenExchangeHeaders()
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	// 记录请求信息
+	cleanedCode := o.CleanAuthorizationCode(authorizationCode)
+	SysLog(fmt.Sprintf("Attempting OAuth token exchange - URL: %s, Code length: %d, Code prefix: %s..., Has proxy: %t",
+		o.config.TokenURL, len(cleanedCode), cleanedCode[:min(10, len(cleanedCode))], proxyURI != ""))
+
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		SysError(fmt.Sprintf("OAuth token exchange network error: %v", err))
+		return nil, fmt.Errorf("token exchange failed: network error - %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 读取响应体
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		SysError(fmt.Sprintf("OAuth token exchange failed - Status: %d, Body: %s", resp.StatusCode, string(body)))
+
+		// 尝试解析错误响应
+		var errorResp map[string]interface{}
+		if json.Unmarshal(body, &errorResp) == nil {
+			if errorMsg, ok := errorResp["error"].(string); ok {
+				errorDesc := ""
+				if desc, exists := errorResp["error_description"].(string); exists {
+					errorDesc = " - " + desc
+				}
+				return nil, fmt.Errorf("token exchange failed: HTTP %d: %s%s", resp.StatusCode, errorMsg, errorDesc)
+			}
+		}
+
+		return nil, fmt.Errorf("token exchange failed: HTTP %d - %s", resp.StatusCode, string(body))
+	}
+
+	// 解析成功响应
+	var tokenResp map[string]interface{}
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	}
+
+	// 打印 json 字符串格式的响应
+	SysLog(fmt.Sprintf("OAuth token exchange response: %s", string(body)))
+
+	// 提取token信息
+	accessToken, ok := tokenResp["access_token"].(string)
+	if !ok || accessToken == "" {
+		return nil, fmt.Errorf("access_token not found in response")
+	}
+
+	refreshToken, _ := tokenResp["refresh_token"].(string)
+
+	expiresIn := 3600 // 默认1小时
+	if exp, ok := tokenResp["expires_in"].(float64); ok {
+		expiresIn = int(exp)
+	}
+
+	scopes := ""
+	if scope, ok := tokenResp["scope"].(string); ok {
+		scopes = scope
+	}
+
+	// 格式化token响应
+	result := o.FormatTokenResponse(accessToken, refreshToken, expiresIn, scopes)
+
+	SysLog(fmt.Sprintf("OAuth token exchange successful - Has access token: %t, Has refresh token: %t, Scopes: %v",
+		result.AccessToken != "", result.RefreshToken != "", result.Scopes))
+
+	return result, nil
+}
+
+// min 辅助函数，返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // GetTokenURL 获取token交换URL

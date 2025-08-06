@@ -48,6 +48,10 @@ func (s *AccountService) CreateAccount(req *model.CreateAccountRequest, userID u
 		EnableProxy:  req.EnableProxy,
 		ProxyURI:     req.ProxyURI,
 		ActiveStatus: req.ActiveStatus,
+		IsMax:        req.IsMax,
+		AccessToken:  req.AccessToken,
+		RefreshToken: req.RefreshToken,
+		ExpiresAt:    req.ExpiresAt,
 		UserID:       userID,
 	}
 

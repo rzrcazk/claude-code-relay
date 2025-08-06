@@ -10,8 +10,12 @@ type Account struct {
 	ID               uint           `json:"id" gorm:"primaryKey"`
 	Name             string         `json:"name" gorm:"not null;comment:账号名称"`
 	PlatformType     string         `json:"platform_type" gorm:"not null;comment:平台类型(claude/claude_console)"`
-	RequestURL       string         `json:"request_url" gorm:"not null;comment:请求地址"`
-	SecretKey        string         `json:"secret_key" gorm:"not null;comment:请求秘钥"`
+	RequestURL       string         `json:"request_url" gorm:"comment:请求地址"`
+	SecretKey        string         `json:"secret_key" gorm:"comment:请求秘钥"`
+	AccessToken      string         `json:"access_token" gorm:"comment:claude的官方token"`
+	RefreshToken     string         `json:"refresh_token" gorm:"comment:claude的官方刷新token"`
+	ExpiresAt        int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
+	IsMax            bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
 	GroupID          int            `json:"group_id" gorm:"default:0;comment:分组ID"`
 	Priority         int            `json:"priority" gorm:"default:100;comment:优先级(数字越小越高)"`
 	Weight           int            `json:"weight" gorm:"default:100;comment:权重(数字越大越高)"`
@@ -122,15 +126,19 @@ type AccountListResponse struct {
 // 账号创建请求参数
 type CreateAccountRequest struct {
 	Name         string `json:"name" binding:"required,min=1,max=100"`
-	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console"`
-	RequestURL   string `json:"request_url" binding:"required,url"`
-	SecretKey    string `json:"secret_key" binding:"required"`
+	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console gemini openai"`
+	RequestURL   string `json:"request_url" binding:"url"`
+	SecretKey    string `json:"secret_key"`
 	GroupID      int    `json:"group_id"`
 	Priority     int    `json:"priority"`
 	Weight       int    `json:"weight" binding:"min=1"`
 	EnableProxy  bool   `json:"enable_proxy"`
 	ProxyURI     string `json:"proxy_uri"`
 	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
+	IsMax        bool   `json:"is_max" binding:"required"` // 是否是max账号
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    int    `json:"expires_at" binding:"min=0"`
 }
 
 // 账号更新请求参数
