@@ -71,8 +71,13 @@ func main() {
 	store := cookie.NewStore([]byte(common.GetSessionSecret()))
 	server.Use(sessions.Sessions("session", store))
 
-	// 设置路由
-	router.SetRouter(server)
+	// 设置跨域中间件
+	server.Use(middleware.CORS())
+
+	// 设置API前后端路由
+	router.SetAPIRouter(server)
+	// 设置Claude Code专用路由
+	router.SetClaudeCodeRouter(server)
 
 	// 启动服务器
 	port := os.Getenv("PORT")

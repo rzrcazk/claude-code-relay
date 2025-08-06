@@ -9,9 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetRouter(server *gin.Engine) {
-	// CORS中间件
-	server.Use(middleware.CORS())
+func SetAPIRouter(server *gin.Engine) {
 
 	// 全局限流：每分钟60次请求
 	server.Use(middleware.RateLimit(60, time.Minute))
