@@ -153,4 +153,5 @@ type UpdateAccountRequest struct {
 	EnableProxy  bool   `json:"enable_proxy"`
 	ProxyURI     string `json:"proxy_uri"`
 	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
+	IsMax        bool   `json:"is_max"` // 是否是max账号
 }

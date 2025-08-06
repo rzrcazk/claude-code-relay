@@ -88,13 +88,17 @@ func (s *AccountService) UpdateAccount(id uint, req *model.UpdateAccountRequest,
 	account.Name = req.Name
 	account.PlatformType = req.PlatformType
 	account.RequestURL = req.RequestURL
-	account.SecretKey = req.SecretKey
 	account.GroupID = req.GroupID
 	account.Priority = req.Priority
 	account.Weight = req.Weight
 	account.EnableProxy = req.EnableProxy
 	account.ProxyURI = req.ProxyURI
 	account.ActiveStatus = req.ActiveStatus
+	account.IsMax = req.IsMax
+
+	if req.SecretKey != "" {
+		account.SecretKey = req.SecretKey
+	}
 
 	if err := model.UpdateAccount(account); err != nil {
 		return nil, errors.New("更新账号失败")
