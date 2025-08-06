@@ -2,6 +2,7 @@ package relay
 
 import (
 	"bytes"
+	"claude-code-relay/common"
 	"claude-code-relay/model"
 	"context"
 	"crypto/tls"
@@ -119,18 +120,31 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
-	// 原样转发响应体（支持流式输出）
-	_, err = io.Copy(c.Writer, resp.Body)
-	if err != nil {
-		log.Println("response copy failed:", err.Error())
+	// 检查是否是流式响应
+	isStream = gjson.GetBytes(body, "stream").Bool()
+	var usageTokens *common.TokenUsage
+
+	if isStream && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		// 流式响应，需要解析token使用量
+		usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
+		if err != nil {
+			log.Println("stream copy and parse failed:", err.Error())
+		}
+	} else {
+		// 非流式响应，直接转发
+		_, err = io.Copy(c.Writer, resp.Body)
+		if err != nil {
+			log.Println("response copy failed:", err.Error())
+		}
 	}
 
+	log.Println(usageTokens)
 	// 处理响应状态码并更新账号状态
-	go updateAccountStatus(account, resp.StatusCode)
+	go updateAccountStatus(account, resp.StatusCode, usageTokens)
 }
 
 // updateAccountStatus 根据响应状态码更新账号状态
-func updateAccountStatus(account *model.Account, statusCode int) {
+func updateAccountStatus(account *model.Account, statusCode int, usage *common.TokenUsage) {
 	// 根据状态码设置CurrentStatus
 	switch {
 	case statusCode == 429:
@@ -161,6 +175,26 @@ func updateAccountStatus(account *model.Account, statusCode int) {
 		} else {
 			// 首次使用，设置为1
 			account.TodayUsageCount = 1
+		}
+
+		// 更新token使用量（如果有的话）
+		if usage != nil {
+			totalTokens := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens
+			if account.LastUsedTime != nil {
+				lastUsedDate := time.Time(*account.LastUsedTime).Format("2006-01-02")
+				todayDate := now.Format("2006-01-02")
+
+				if lastUsedDate == todayDate {
+					// 同一天，累加tokens
+					account.TodayUsageTokens += totalTokens
+				} else {
+					// 不同天，重置tokens
+					account.TodayUsageTokens = totalTokens
+				}
+			} else {
+				// 首次使用，设置tokens
+				account.TodayUsageTokens = totalTokens
+			}
 		}
 
 		// 更新最后使用时间
