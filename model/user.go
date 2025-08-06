@@ -81,6 +81,29 @@ func GetUsers(page, limit int) ([]User, int64, error) {
 	return users, total, nil
 }
 
+type UserInfo struct {
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+}
+
+type UserProfile struct {
+	ID        uint   `json:"id"`
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Status    int    `json:"status"`
+	CreatedAt string `json:"created_at"`
+}
+
+type UserListResult struct {
+	Users []User `json:"users"`
+	Total int64  `json:"total"`
+	Page  int    `json:"page"`
+	Limit int    `json:"limit"`
+}
+
 func init() {
 	// 创建默认管理员用户
 	go func() {
