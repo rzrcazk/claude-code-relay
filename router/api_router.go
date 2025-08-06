@@ -59,11 +59,11 @@ func SetAPIRouter(server *gin.Engine) {
 			// 分组相关
 			group := authenticated.Group("/groups")
 			{
-				group.GET("/list", controller.GetGroups)      // 获取分组列表
-				group.POST("/create", controller.CreateGroup) // 创建分组
-				group.GET("/:id", controller.GetGroup)        // 获取分组详情
-				group.PUT("/:id", controller.UpdateGroup)     // 更新分组
-				group.DELETE("/:id", controller.DeleteGroup)  // 删除分组
+				group.GET("/list", controller.GetGroups)            // 获取分组列表
+				group.POST("/create", controller.CreateGroup)       // 创建分组
+				group.GET("/detail/:id", controller.GetGroup)       // 获取分组详情
+				group.PUT("/update/:id", controller.UpdateGroup)    // 更新分组
+				group.DELETE("/delete/:id", controller.DeleteGroup) // 删除分组
 			}
 
 			// 账号管理相关
