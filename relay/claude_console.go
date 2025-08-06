@@ -179,7 +179,7 @@ func updateAccountStatus(account *model.Account, statusCode int, usage *common.T
 
 		// 更新token使用量（如果有的话）
 		if usage != nil {
-			totalTokens := usage.InputTokens + usage.OutputTokens + usage.CacheReadInputTokens
+			totalTokens := usage.InputTokens + usage.OutputTokens
 			if account.LastUsedTime != nil {
 				lastUsedDate := time.Time(*account.LastUsedTime).Format("2006-01-02")
 				todayDate := now.Format("2006-01-02")
