@@ -5,9 +5,6 @@ import (
 	"claude-code-relay/constant"
 	"claude-code-relay/model"
 	"errors"
-	"strconv"
-
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,9 +26,10 @@ type UserInfo struct {
 	Role     string `json:"role"`
 }
 
+// Login 用户登录
 func (s *UserService) Login(username, password string, c *gin.Context) (*LoginResult, error) {
 	user, err := model.GetUserByUsername(username)
-	if err != nil || user.Password != password {
+	if err != nil || user.Password != common.HashPassword(password) {
 		return nil, errors.New("用户名或密码错误")
 	}
 
@@ -44,11 +42,6 @@ func (s *UserService) Login(username, password string, c *gin.Context) (*LoginRe
 	if err != nil {
 		return nil, errors.New("生成token失败")
 	}
-
-	// 同时设置session以保持向后兼容
-	session := sessions.Default(c)
-	session.Set("user_id", strconv.Itoa(int(user.ID)))
-	session.Save()
 
 	result := &LoginResult{
 		Token: token,
@@ -63,6 +56,7 @@ func (s *UserService) Login(username, password string, c *gin.Context) (*LoginRe
 	return result, nil
 }
 
+// Register 注册新用户
 func (s *UserService) Register(username, email, password string) error {
 	// 检查用户名是否已存在
 	if _, err := model.GetUserByUsername(username); err == nil {
@@ -77,7 +71,7 @@ func (s *UserService) Register(username, email, password string) error {
 	user := &model.User{
 		Username: username,
 		Email:    email,
-		Password: password, // 实际项目中应该加密
+		Password: common.HashPassword(password), // 实际项目中应该加密
 		Role:     constant.RoleUser,
 		Status:   constant.UserStatusActive,
 	}
@@ -87,12 +81,6 @@ func (s *UserService) Register(username, email, password string) error {
 	}
 
 	return nil
-}
-
-func (s *UserService) Logout(c *gin.Context) {
-	session := sessions.Default(c)
-	session.Delete("user_id")
-	session.Save()
 }
 
 func (s *UserService) GetProfile(user *model.User) *model.UserProfile {

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
 	"os"
@@ -35,4 +36,22 @@ func GetCurrentTimestamp() int64 {
 
 func FormatTime(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
+}
+
+func GetSalt() string {
+	salt := os.Getenv("SALT")
+	if salt == "" {
+		salt = "claude-code-relay-default-salt"
+	}
+	return salt
+}
+
+func HashPassword(password string) string {
+	salt := GetSalt()
+	hash := md5.Sum([]byte(password + salt))
+	return hex.EncodeToString(hash[:])
+}
+
+func VerifyPassword(password, hashedPassword string) bool {
+	return HashPassword(password) == hashedPassword
 }

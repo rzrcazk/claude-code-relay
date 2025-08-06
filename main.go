@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -66,10 +64,6 @@ func main() {
 
 	// 设置日志中间件
 	middleware.SetUpLogger(server)
-
-	// 设置session
-	store := cookie.NewStore([]byte(common.GetSessionSecret()))
-	server.Use(sessions.Sessions("session", store))
 
 	// 设置跨域中间件
 	server.Use(middleware.CORS())

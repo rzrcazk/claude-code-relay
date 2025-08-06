@@ -92,16 +92,6 @@ func Register(c *gin.Context) {
 	})
 }
 
-func Logout(c *gin.Context) {
-	userService := service.NewUserService()
-	userService.Logout(c)
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "退出成功",
-		"code":    constant.Success,
-	})
-}
-
 func GetProfile(c *gin.Context) {
 	user := c.MustGet("user").(*model.User)
 

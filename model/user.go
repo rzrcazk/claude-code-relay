@@ -134,7 +134,7 @@ func init() {
 			adminUser := &User{
 				Username: adminUsername,
 				Email:    adminEmail,
-				Password: adminPassword,
+				Password: common.HashPassword(adminPassword),
 				Role:     "admin",
 				Status:   1,
 			}

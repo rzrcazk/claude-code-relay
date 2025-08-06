@@ -30,7 +30,6 @@ func SetAPIRouter(server *gin.Engine) {
 		{
 			auth.POST("/login", controller.Login)
 			auth.POST("/register", controller.Register)
-			auth.POST("/logout", controller.Logout)
 		}
 
 		// 系统状态
