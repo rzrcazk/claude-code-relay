@@ -66,6 +66,12 @@ func SetAPIRouter(server *gin.Engine) {
 				account.DELETE("/delete/:id", controller.DeleteAccount) // 删除账号
 			}
 
+			// Claude OAuth 相关
+			oauth := authenticated.Group("/oauth")
+			{
+				oauth.GET("/generate-auth-url", controller.GetOAuthURL) // 获取OAuth授权URL
+			}
+
 			// 管理员接口
 			admin := authenticated.Group("/admin")
 			admin.Use(middleware.AdminAuth())
