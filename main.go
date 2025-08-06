@@ -1,0 +1,88 @@
+package main
+
+import (
+	"claude-scheduler/common"
+	"claude-scheduler/middleware"
+	"claude-scheduler/model"
+	"claude-scheduler/router"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	// 加载环境变量
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
+	// 设置日志
+	common.SetupLogger()
+	common.SysLog("Claude Scheduler v1.0.0 started")
+
+	// 设置Gin模式
+	if os.Getenv("GIN_MODE") != "debug" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// 初始化数据库
+	err = model.InitDB()
+	if err != nil {
+		common.FatalLog("failed to initialize database: " + err.Error())
+	}
+	defer func() {
+		if err := model.CloseDB(); err != nil {
+			common.FatalLog("failed to close database: " + err.Error())
+		}
+	}()
+
+	// 初始化Redis
+	err = common.InitRedisClient()
+	if err != nil {
+		common.FatalLog("failed to initialize Redis: " + err.Error())
+	}
+
+	// 初始化HTTP服务器
+	server := gin.New()
+	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
+		common.SysError(fmt.Sprintf("panic detected: %v", err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"message": fmt.Sprintf("系统异常: %v", err),
+				"type":    "system_error",
+			},
+		})
+	}))
+
+	// 请求ID中间件
+	server.Use(middleware.RequestId())
+
+	// 设置日志中间件
+	middleware.SetUpLogger(server)
+
+	// 设置session
+	store := cookie.NewStore([]byte(common.GetSessionSecret()))
+	server.Use(sessions.Sessions("session", store))
+
+	// 设置路由
+	router.SetRouter(server)
+
+	// 启动服务器
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	common.SysLog("Server starting on port " + port)
+	err = server.Run(":" + port)
+	if err != nil {
+		common.FatalLog("failed to start HTTP server: " + err.Error())
+	}
+}
