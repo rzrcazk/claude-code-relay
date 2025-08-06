@@ -2,6 +2,7 @@ package model
 
 import (
 	"claude-code-relay/common"
+	"os"
 	"time"
 
 	"gorm.io/gorm"
@@ -115,15 +116,30 @@ func init() {
 		var count int64
 		DB.Model(&User{}).Count(&count)
 		if count == 0 {
+			adminUsername := os.Getenv("DEFAULT_ADMIN_USERNAME")
+			if adminUsername == "" {
+				adminUsername = "admin"
+			}
+
+			adminPassword := os.Getenv("DEFAULT_ADMIN_PASSWORD")
+			if adminPassword == "" {
+				adminPassword = "admin123"
+			}
+
+			adminEmail := os.Getenv("DEFAULT_ADMIN_EMAIL")
+			if adminEmail == "" {
+				adminEmail = "admin@example.com"
+			}
+
 			adminUser := &User{
-				Username: "admin",
-				Email:    "admin@example.com",
-				Password: "admin123", // 实际项目中应该加密
+				Username: adminUsername,
+				Email:    adminEmail,
+				Password: adminPassword,
 				Role:     "admin",
 				Status:   1,
 			}
 			if err := CreateUser(adminUser); err == nil {
-				common.SysLog("Default admin user created: admin/admin123")
+				common.SysLog("Default admin user created: " + adminUsername + "/" + adminPassword)
 			}
 		}
 	}()
