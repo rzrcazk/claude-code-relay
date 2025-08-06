@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"claude-scheduler/common"
 	"claude-scheduler/constant"
 	"claude-scheduler/model"
 	"net/http"
@@ -48,7 +49,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 设置session
+	// 生成JWT token
+	token, err := common.GenerateToken(user.ID, user.Username, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "生成token失败",
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	// 同时设置session以保持向后兼容
 	session := sessions.Default(c)
 	session.Set("user_id", strconv.Itoa(int(user.ID)))
 	session.Save()
@@ -57,6 +68,7 @@ func Login(c *gin.Context) {
 		"message": "登录成功",
 		"code":    constant.Success,
 		"data": gin.H{
+			"token": token,
 			"user": gin.H{
 				"id":       user.ID,
 				"username": user.Username,
