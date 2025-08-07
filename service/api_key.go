@@ -136,6 +136,26 @@ func GetApiKeys(page, limit int, userID uint, groupID *uint) (*model.ApiKeyListR
 	}, nil
 }
 
+// UpdateApiKeyStatusCom 更新API Key状态
+func UpdateApiKeyStatusCom(id, userID uint, status int) error {
+	apiKey, err := model.GetApiKeyById(id, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("API Key不存在")
+		}
+		return err
+	}
+
+	apiKey.Status = status
+
+	err = model.UpdateApiKey(apiKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ValidateApiKey 验证API Key是否有效
 func ValidateApiKey(key string) (*model.ApiKey, error) {
 	if key == "" {

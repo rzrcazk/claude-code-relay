@@ -184,6 +184,65 @@ func DeleteApiKey(c *gin.Context) {
 	})
 }
 
+// UpdateApiKeyStatus 更新API Key状态
+func UpdateApiKeyStatus(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "无效的API Key ID",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	var req struct {
+		Status int `json:"status" binding:"required,oneof=0 1"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	// 从认证中获取用户ID
+	user := c.MustGet("user").(*model.User)
+	userID := user.ID
+
+	err = service.UpdateApiKeyStatusCom(uint(idInt), userID, req.Status)
+	if err != nil {
+		var statusCode int
+		var code int
+		if err.Error() == "API Key不存在" {
+			statusCode = http.StatusNotFound
+			code = constant.InvalidParams
+		} else {
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	statusText := "禁用"
+	if req.Status == 1 {
+		statusText = "启用"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新API Key状态成功",
+		"code":    constant.Success,
+		"data": gin.H{
+			"status": statusText,
+		},
+	})
+}
+
 // GetApiKeys 获取API Key列表
 func GetApiKeys(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

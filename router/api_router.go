@@ -78,11 +78,12 @@ func SetAPIRouter(server *gin.Engine) {
 			// API Key 相关
 			apikey := authenticated.Group("/api-keys")
 			{
-				apikey.GET("/list", controller.GetApiKeys)            // 获取API Key列表
-				apikey.POST("/create", controller.CreateApiKey)       // 创建API Key
-				apikey.GET("/detail/:id", controller.GetApiKey)       // 获取API Key详情
-				apikey.PUT("/update/:id", controller.UpdateApiKey)    // 更新API Key
-				apikey.DELETE("/delete/:id", controller.DeleteApiKey) // 删除API Key
+				apikey.GET("/list", controller.GetApiKeys)                      // 获取API Key列表
+				apikey.POST("/create", controller.CreateApiKey)                 // 创建API Key
+				apikey.GET("/detail/:id", controller.GetApiKey)                 // 获取API Key详情
+				apikey.PUT("/update/:id", controller.UpdateApiKey)              // 更新API Key
+				apikey.PUT("/update-status/:id", controller.UpdateApiKeyStatus) // 更新API Key状态
+				apikey.DELETE("/delete/:id", controller.DeleteApiKey)           // 删除API Key
 			}
 
 			// 管理员接口
