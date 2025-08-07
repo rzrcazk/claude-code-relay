@@ -45,9 +45,10 @@ func CreateApiKey(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "创建API Key成功",
-		"code":    constant.Success,
-		"data":    apiKey,
+		"code": constant.Success,
+		"data": gin.H{
+			"key": apiKey.Key,
+		},
 	})
 }
 
