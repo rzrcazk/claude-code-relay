@@ -59,6 +59,30 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 	body, _ = sjson.SetBytes(body, "stream", true) // 强制流式输出
 
+	modelName := gjson.GetBytes(body, "model").String()
+	if modelName == "" {
+		log.Printf("请求体中缺少model字段")
+		c.AbortWithStatus(http.StatusServiceUnavailable)
+		return
+	}
+
+	// 模型名称是否允许在apiKey的限制模型中
+	if apiKey.ModelRestriction != "" {
+		allowedModels := strings.Split(apiKey.ModelRestriction, ",")
+		modelAllowed := false
+		for _, allowedModel := range allowedModels {
+			if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
+				modelAllowed = true
+				break
+			}
+		}
+		if !modelAllowed {
+			log.Printf("API Key %s 不允许使用模型 %s", apiKey.Key, modelName)
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+	}
+
 	// 获取有效的访问token
 	accessToken, err := getValidAccessToken(account)
 	if err != nil {
