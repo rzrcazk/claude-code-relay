@@ -83,7 +83,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		"x-stainless-helper-method":                 "stream",
 		"x-app":                                     "cli",
 		"User-Agent":                                "claude-cli/1.0.44 (external, cli)",
-		"anthropic-beta":                            "fine-grained-tool-streaming-2025-05-14",
+		"anthropic-beta":                            "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 		"X-Stainless-Runtime-Version":               "v20.18.1",
 		"anthropic-dangerous-direct-browser-access": "true",
 	}
@@ -109,6 +109,19 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	if isStream && c.Request.Header.Get("Accept") == "" {
 		req.Header.Set("Accept", "text/event-stream")
 	}
+
+	// 调试日志：打印请求详情
+	log.Printf("=== 调试信息 ===")
+	log.Printf("发送请求到: %s", ClaudeAPIURL)
+	log.Printf("请求方法: %s", c.Request.Method)
+	log.Printf("账号名称: %s", account.Name)
+	log.Printf("Authorization: Bearer %s", maskToken(accessToken))
+	log.Printf("User-Agent: %s", req.Header.Get("User-Agent"))
+	log.Printf("anthropic-version: %s", req.Header.Get("anthropic-version"))
+	log.Printf("anthropic-beta: %s", req.Header.Get("anthropic-beta"))
+	log.Printf("Content-Type: %s", req.Header.Get("Content-Type"))
+	log.Printf("是否流式请求: %t", isStream)
+	log.Printf("===============")
 
 	httpClientTimeout, _ := time.ParseDuration(os.Getenv("HTTP_CLIENT_TIMEOUT") + "s")
 	if httpClientTimeout == 0 {
@@ -144,11 +157,22 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 			return
 		}
 
-		log.Println("request conversation failed:", err.Error())
+		log.Printf("❌ 请求失败: %v", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	defer common.CloseIO(resp.Body)
+
+	// 调试日志：打印响应详情
+	log.Printf("=== 响应信息 ===")
+	log.Printf("响应状态码: %d", resp.StatusCode)
+	log.Printf("响应头:")
+	for name, values := range resp.Header {
+		for _, value := range values {
+			log.Printf("  %s: %s", name, value)
+		}
+	}
+	log.Printf("===============")
 
 	// 读取响应体
 	var responseBody []byte
@@ -159,10 +183,13 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		var readErr error
 		responseBody, readErr = io.ReadAll(resp.Body)
 		if readErr != nil {
-			log.Printf("读取错误响应失败: %v", readErr)
+			log.Printf("❌ 读取错误响应失败: %v", readErr)
 			c.AbortWithStatus(resp.StatusCode)
 			return
 		}
+
+		// 调试日志：打印错误响应内容
+		log.Printf("❌ 错误响应内容: %s", string(responseBody))
 	} else {
 		// 成功响应，使用流式解析
 		usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
