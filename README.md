@@ -79,7 +79,8 @@ claude-code-relay/
 
 ### 1. 环境要求
 
-- Go 1.18+
+- Go 1.21+
+- MySQL 8.0+ (推荐) 或 SQLite (默认)
 - Redis (可选，用于限流和缓存)
 
 ### 2. 安装依赖
@@ -91,8 +92,20 @@ go mod tidy
 ### 3. 配置环境变量
 
 ```bash
+# 复制环境变量模板
 cp .env.example .env
-# 编辑 .env 文件，配置数据库和Redis连接
+
+# 生成安全密钥（生产环境必须）
+openssl rand -base64 32  # 用于SESSION_SECRET
+openssl rand -base64 32  # 用于JWT_SECRET  
+openssl rand -base64 16  # 用于SALT
+```
+
+编辑 `.env` 文件，至少配置以下必需参数：
+```bash
+SESSION_SECRET=your-session-secret
+JWT_SECRET=your-jwt-secret
+SALT=your-salt-value
 ```
 
 ### 4. 启动服务
@@ -200,34 +213,77 @@ Content-Type: application/json
 
 ### 环境变量
 
+#### 基础配置
 | 变量名 | 说明 | 默认值 | 必需 |
 |--------|------|--------|------|
 | PORT | 服务端口 | 8080 | ❌ |
-| GIN_MODE | Gin运行模式 | debug | ❌ |
-| DB_PATH | SQLite数据库路径 | ./data/data.db | ❌ |
+| GIN_MODE | Gin运行模式 (debug/release) | debug | ❌ |
+| HTTP_CLIENT_TIMEOUT | HTTP客户端超时时间(秒) | 120 | ❌ |
+
+#### 安全配置（生产环境必须）
+| 变量名 | 说明 | 默认值 | 必需 |
+|--------|------|--------|------|
 | SESSION_SECRET | Session密钥 | - | ✅ |
 | JWT_SECRET | JWT密钥 | - | ✅ |
 | SALT | 密码加密盐值 | - | ✅ |
-| REDIS_HOST | Redis主机 | localhost | ❌ |
+
+#### MySQL数据库配置（推荐）
+| 变量名 | 说明 | 默认值 | 必需 |
+|--------|------|--------|------|
+| MYSQL_HOST | MySQL主机地址 | localhost | ❌ |
+| MYSQL_PORT | MySQL端口 | 3306 | ❌ |
+| MYSQL_USER | MySQL用户名 | root | ❌ |
+| MYSQL_PASSWORD | MySQL密码 | - | ❌ |
+| MYSQL_DATABASE | MySQL数据库名 | claude_code_relay | ❌ |
+| MYSQL_MAX_OPEN_CONNS | 最大连接数 | 100 | ❌ |
+| MYSQL_MAX_IDLE_CONNS | 最大空闲连接数 | 10 | ❌ |
+| MYSQL_MAX_LIFETIME_MINUTES | 连接最大生命周期(分钟) | 60 | ❌ |
+| MYSQL_MAX_IDLE_TIME_MINUTES | 连接最大空闲时间(分钟) | 30 | ❌ |
+
+#### Redis配置（可选）
+| 变量名 | 说明 | 默认值 | 必需 |
+|--------|------|--------|------|
+| REDIS_HOST | Redis主机地址 | localhost | ❌ |
 | REDIS_PORT | Redis端口 | 6379 | ❌ |
 | REDIS_PASSWORD | Redis密码 | - | ❌ |
+| REDIS_DB | Redis数据库编号 | 0 | ❌ |
+
+#### 日志配置
+| 变量名 | 说明 | 默认值 | 必需 |
+|--------|------|--------|------|
 | LOG_LEVEL | 日志级别 | info | ❌ |
 | LOG_FILE | 日志文件路径 | ./logs/app.log | ❌ |
+| LOG_RECORD_API | 是否记录API日志到数据库 | false | ❌ |
 | LOG_RETENTION_MONTHS | 日志保留月数 | 3 | ❌ |
+
+#### 默认管理员配置
+| 变量名 | 说明 | 默认值 | 必需 |
+|--------|------|--------|------|
 | DEFAULT_ADMIN_USERNAME | 默认管理员用户名 | admin | ❌ |
 | DEFAULT_ADMIN_PASSWORD | 默认管理员密码 | admin123 | ❌ |
+| DEFAULT_ADMIN_EMAIL | 默认管理员邮箱 | admin@example.com | ❌ |
 
 ### 数据库
 
-系统使用 SQLite 作为主数据库，自动创建以下表：
+系统支持MySQL（推荐）和SQLite两种数据库：
+
+**MySQL模式（生产环境推荐）:**
+- 配置MySQL相关环境变量即可启用
+- 支持高并发和大数据量
+- 提供更好的性能和可靠性
+
+**SQLite模式（开发环境）:**
+- 未配置MySQL时自动使用SQLite
+- 数据库文件默认存储在 `./data/data.db`
+- 无需额外配置，开箱即用
+
+**数据表结构:**
 - `users` - 用户表（用户账户、角色权限）
 - `accounts` - Claude账号表（账号信息、使用统计、状态监控）
 - `api_keys` - API Key表（密钥管理、使用统计、过期时间）
 - `groups` - 分组表（账号分组、API Key分组）
 - `tasks` - 任务表（任务调度、状态管理）
 - `api_logs` - API日志表（请求日志、响应数据、统计信息）
-
-数据库文件默认存储在 `./data/data.db`
 
 ### Redis缓存
 
@@ -360,50 +416,322 @@ Redis用于：
 
 ## 🚀 部署指南
 
-### Docker部署（推荐）
+### Docker Compose部署（推荐）
+
+项目提供两种Docker部署方式：
+
+#### 方式一：使用现有MySQL和Redis服务
+
+如果你已经有MySQL和Redis服务，使用 `docker-compose.yml`：
+
 ```bash
-# 构建镜像
+# 1. 复制环境变量文件并配置
+cp .env.example .env
+# 编辑 .env 文件，配置MySQL和Redis连接信息
+
+# 2. 启动应用
+docker-compose up -d
+
+# 3. 查看日志
+docker-compose logs -f app
+
+# 4. 停止服务
+docker-compose down
+```
+
+#### 方式二：一键部署全套服务
+
+如果需要同时部署MySQL和Redis，使用 `docker-compose-all.yml`：
+
+```bash
+# 1. 复制并配置环境变量（可选，会使用默认值）
+cp .env.example .env
+
+# 2. 启动全套服务（包含MySQL、Redis、应用）
+docker-compose -f docker-compose-all.yml up -d
+
+# 3. 查看所有服务状态
+docker-compose -f docker-compose-all.yml ps
+
+# 4. 查看应用日志
+docker-compose -f docker-compose-all.yml logs -f app
+
+# 5. 停止所有服务
+docker-compose -f docker-compose-all.yml down
+```
+
+**默认配置说明：**
+- 应用端口：`10081` (映射到容器内的8080)
+- MySQL数据库：`claude_code_relay`
+- MySQL用户：`claude` / 密码：`claude123456`
+- Redis：无密码，端口6379
+- 默认管理员：`admin` / `admin123`
+
+### 手动Docker部署
+
+```bash
+# 1. 构建镜像
 docker build -t claude-code-relay .
 
-# 运行容器
+# 2. 运行容器（使用SQLite）
 docker run -d \
   --name claude-code-relay \
   -p 8080:8080 \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/logs:/app/logs \
-  -e SESSION_SECRET=your-session-secret \
-  -e JWT_SECRET=your-jwt-secret \
-  -e SALT=your-salt-value \
+  -e SESSION_SECRET=$(openssl rand -base64 32) \
+  -e JWT_SECRET=$(openssl rand -base64 32) \
+  -e SALT=$(openssl rand -base64 16) \
+  claude-code-relay
+
+# 3. 运行容器（使用外部MySQL和Redis）
+docker run -d \
+  --name claude-code-relay \
+  -p 8080:8080 \
+  -v $(pwd)/logs:/app/logs \
+  -e SESSION_SECRET=$(openssl rand -base64 32) \
+  -e JWT_SECRET=$(openssl rand -base64 32) \
+  -e SALT=$(openssl rand -base64 16) \
+  -e MYSQL_HOST=your-mysql-host \
+  -e MYSQL_USER=your-mysql-user \
+  -e MYSQL_PASSWORD=your-mysql-password \
+  -e MYSQL_DATABASE=claude_code_relay \
+  -e REDIS_HOST=your-redis-host \
   claude-code-relay
 ```
 
-### 生产环境配置
+### 二进制文件部署
+
+#### 使用Makefile构建
+
 ```bash
-# 设置环境变量
+# 构建多平台二进制文件
+make build
+
+# 查看构建产物
+ls out/
+# claude-code-relay-linux-amd64
+# claude-code-relay-windows-amd64.exe
+# claude-code-relay-darwin-amd64
+# claude-code-relay-linux-arm64
+# claude-code-relay-darwin-arm64
+
+# 清理构建产物
+make clean
+```
+
+#### 生产环境配置
+
+```bash
+# 1. 设置环境变量
 export GIN_MODE=release
 export LOG_LEVEL=info
 export SESSION_SECRET=$(openssl rand -base64 32)
 export JWT_SECRET=$(openssl rand -base64 32)
 export SALT=$(openssl rand -base64 16)
 
-# 启动服务
+# 2. 配置MySQL（推荐）
+export MYSQL_HOST=your-mysql-host
+export MYSQL_USER=your-mysql-user
+export MYSQL_PASSWORD=your-mysql-password
+export MYSQL_DATABASE=claude_code_relay
+
+# 3. 配置Redis（可选）
+export REDIS_HOST=your-redis-host
+export REDIS_PORT=6379
+
+# 4. 启动服务
 ./claude-code-relay
 ```
 
-### 反向代理配置（Nginx）
+### 反向代理配置
+
+#### Nginx配置
+
 ```nginx
+upstream claude_code_relay {
+    server 127.0.0.1:8080;
+    # 如果有多个实例，可以添加更多server
+    # server 127.0.0.1:8081;
+}
+
 server {
     listen 80;
     server_name your-domain.com;
     
+    # 重定向到HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+    
+    # SSL证书配置
+    ssl_certificate /path/to/your/cert.pem;
+    ssl_certificate_key /path/to/your/key.pem;
+    
+    # 安全头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # 限制请求体大小
+    client_max_body_size 10m;
+    
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://claude_code_relay;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # 缓冲区设置
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+    }
+    
+    # 健康检查端点
+    location /health {
+        proxy_pass http://claude_code_relay;
+        access_log off;
+    }
+    
+    # 静态文件缓存
+    location ~* \.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2)$ {
+        proxy_pass http://claude_code_relay;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
     }
 }
+```
+
+#### Caddy配置
+
+```caddyfile
+your-domain.com {
+    reverse_proxy 127.0.0.1:8080
+    
+    # 安全头
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+    }
+    
+    # 请求大小限制
+    request_body {
+        max_size 10MB
+    }
+    
+    # 健康检查
+    handle /health {
+        reverse_proxy 127.0.0.1:8080
+    }
+}
+```
+
+### 高可用部署
+
+#### 多实例负载均衡
+
+```yaml
+# docker-compose-ha.yml
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: your-root-password
+      MYSQL_DATABASE: claude_code_relay
+      MYSQL_USER: claude
+      MYSQL_PASSWORD: your-password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.0-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  app1:
+    image: claude-code-relay:latest
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on: [mysql, redis]
+    restart: unless-stopped
+
+  app2:
+    image: claude-code-relay:latest
+    ports:
+      - "8081:8080"
+    env_file: .env
+    depends_on: [mysql, redis]
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on: [app1, app2]
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+```
+
+### 监控和维护
+
+#### 健康检查
+
+```bash
+# 检查服务状态
+curl -f http://localhost:8080/health || exit 1
+
+# 检查数据库连接
+curl -s http://localhost:8080/api/v1/status | jq .database_status
+
+# 检查Redis连接
+curl -s http://localhost:8080/api/v1/status | jq .redis_status
+```
+
+#### 日志管理
+
+```bash
+# Docker环境查看日志
+docker-compose logs -f app
+
+# 查看应用日志文件
+tail -f ./logs/app.log
+
+# 日志轮转配置（logrotate）
+cat > /etc/logrotate.d/claude-code-relay << EOF
+/path/to/claude-code-relay/logs/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    create 0644 root root
+    postrotate
+        docker-compose restart app 2>/dev/null || true
+    endscript
+}
+EOF
 ```
 
 ## 🔧 使用示例
