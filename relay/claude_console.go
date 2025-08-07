@@ -156,7 +156,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 
 	// 透传响应头，但需要处理Content-Length以避免流式响应问题
 	for name, values := range resp.Header {
-		// 跳过Content-Length，让Gin自动处理
+		// 跳过Content-Length，让Gin自动处理流式响应
 		if strings.ToLower(name) == "content-length" {
 			continue
 		}
@@ -165,7 +165,17 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
-	// 解析token使用量
+	// 确保设置正确的流式响应头
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	if c.Writer.Header().Get("Content-Type") == "" {
+		c.Header("Content-Type", "text/event-stream")
+	}
+
+	// 刷新响应头到客户端
+	c.Writer.Flush()
+
+	// 解析token使用量 - 现在使用真正的流式转发
 	var usageTokens *common.TokenUsage
 	usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
 	if err != nil {
