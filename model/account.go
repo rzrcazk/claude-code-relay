@@ -35,8 +35,9 @@ type Account struct {
 	UpdatedAt                     Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
 
-	// 关联用户
-	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	// 关联查询
+	User  User   `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Group *Group `json:"group" gorm:"-"`
 }
 
 // 账号列表请求参数
@@ -114,6 +115,15 @@ func GetAccountByID(id uint) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 如果有分组ID，查询分组信息
+	if account.GroupID > 0 {
+		var group Group
+		if err := DB.Where("id = ?", account.GroupID).First(&group).Error; err == nil {
+			account.Group = &group
+		}
+	}
+
 	return &account, nil
 }
 
@@ -155,6 +165,39 @@ func GetAccountList(page, limit int, userID *uint) ([]Account, int64, error) {
 
 	if err != nil {
 		return nil, 0, err
+	}
+
+	// 批量查询分组信息
+	groupIDs := make(map[int]bool)
+	for _, account := range accounts {
+		if account.GroupID > 0 {
+			groupIDs[account.GroupID] = true
+		}
+	}
+
+	if len(groupIDs) > 0 {
+		var ids []int
+		for id := range groupIDs {
+			ids = append(ids, id)
+		}
+
+		var groups []Group
+		DB.Where("id IN ?", ids).Find(&groups)
+
+		// 创建分组映射
+		groupMap := make(map[int]*Group)
+		for i := range groups {
+			groupMap[int(groups[i].ID)] = &groups[i]
+		}
+
+		// 为每个账号设置对应的分组信息
+		for i := range accounts {
+			if accounts[i].GroupID > 0 {
+				if group, exists := groupMap[accounts[i].GroupID]; exists {
+					accounts[i].Group = group
+				}
+			}
+		}
 	}
 
 	return accounts, total, nil
