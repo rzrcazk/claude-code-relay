@@ -35,11 +35,25 @@ func ParseStreamResponse(dst io.Writer, src io.Reader) (*TokenUsage, error) {
 			dataJSON := strings.TrimPrefix(line, "data: ")
 			eventType := gjson.Get(dataJSON, "type").String()
 
-			// 检查是否是message_start事件，解析model字段
+			// 检查是否是message_start事件，解析model字段和使用量
 			if eventType == "message_start" {
 				model := gjson.Get(dataJSON, "message.model").String()
 				if model != "" {
 					usage.Model = model
+				}
+
+				// 从message_start中解析使用量
+				usageJSON := gjson.Get(dataJSON, "message.usage")
+				if usageJSON.Exists() {
+					inputTokens := gjson.Get(dataJSON, "message.usage.input_tokens").Num
+					outputTokens := gjson.Get(dataJSON, "message.usage.output_tokens").Num
+					cacheReadInputTokens := gjson.Get(dataJSON, "message.usage.cache_read_input_tokens").Num
+					cacheCreationInputTokens := gjson.Get(dataJSON, "message.usage.cache_creation_input_tokens").Num
+
+					usage.InputTokens = int(inputTokens)
+					usage.OutputTokens = int(outputTokens)
+					usage.CacheReadInputTokens = int(cacheReadInputTokens)
+					usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
 				}
 			}
 
@@ -53,11 +67,17 @@ func ParseStreamResponse(dst io.Writer, src io.Reader) (*TokenUsage, error) {
 					cacheReadInputTokens := gjson.Get(dataJSON, "usage.cache_read_input_tokens").Num
 					cacheCreationInputTokens := gjson.Get(dataJSON, "usage.cache_creation_input_tokens").Num
 
-					// 设置token使用量（input_tokens和各种cache tokens通常只在最后的delta中出现）
-					usage.InputTokens = int(inputTokens)
+					// 更新token使用量
+					if inputTokens > 0 {
+						usage.InputTokens = int(inputTokens)
+					}
 					usage.OutputTokens += int(outputTokens) // 累加output tokens
-					usage.CacheReadInputTokens = int(cacheReadInputTokens)
-					usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
+					if cacheReadInputTokens > 0 {
+						usage.CacheReadInputTokens = int(cacheReadInputTokens)
+					}
+					if cacheCreationInputTokens > 0 {
+						usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
+					}
 				}
 			}
 		}

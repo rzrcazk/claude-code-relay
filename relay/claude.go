@@ -109,19 +109,6 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		req.Header.Set("Accept", "text/event-stream")
 	}
 
-	// 调试日志：打印请求详情
-	log.Printf("=== 调试信息 ===")
-	log.Printf("发送请求到: %s", ClaudeAPIURL)
-	log.Printf("请求方法: %s", c.Request.Method)
-	log.Printf("账号名称: %s", account.Name)
-	log.Printf("Authorization: Bearer %s", maskToken(accessToken))
-	log.Printf("User-Agent: %s", req.Header.Get("User-Agent"))
-	log.Printf("anthropic-version: %s", req.Header.Get("anthropic-version"))
-	log.Printf("anthropic-beta: %s", req.Header.Get("anthropic-beta"))
-	log.Printf("Content-Type: %s", req.Header.Get("Content-Type"))
-	log.Printf("是否流式请求: %t", isStream)
-	log.Printf("===============")
-
 	httpClientTimeout, _ := time.ParseDuration(os.Getenv("HTTP_CLIENT_TIMEOUT") + "s")
 	if httpClientTimeout == 0 {
 		httpClientTimeout = 120 * time.Second
@@ -162,17 +149,6 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	}
 	defer common.CloseIO(resp.Body)
 
-	// 调试日志：打印响应详情
-	log.Printf("=== 响应信息 ===")
-	log.Printf("响应状态码: %d", resp.StatusCode)
-	log.Printf("响应头:")
-	for name, values := range resp.Header {
-		for _, value := range values {
-			log.Printf("  %s: %s", name, value)
-		}
-	}
-	log.Printf("===============")
-
 	// 读取响应体
 	var responseBody []byte
 	var usageTokens *common.TokenUsage
@@ -189,12 +165,6 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 		// 调试日志：打印错误响应内容
 		log.Printf("❌ 错误响应内容: %s", string(responseBody))
-	} else {
-		// 成功响应，使用流式解析
-		usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
-		if err != nil {
-			log.Println("stream copy and parse failed:", err.Error())
-		}
 	}
 
 	// 透传响应状态码
@@ -208,6 +178,14 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		}
 		for _, value := range values {
 			c.Header(name, value)
+		}
+	}
+
+	if resp.StatusCode < 400 {
+		// 成功响应，使用流式解析
+		usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
+		if err != nil {
+			log.Println("stream copy and parse failed:", err.Error())
 		}
 	}
 
