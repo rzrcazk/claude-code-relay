@@ -2,7 +2,7 @@ package model
 
 import (
 	"gorm.io/gorm"
-	
+	"time"
 )
 
 type Account struct {
