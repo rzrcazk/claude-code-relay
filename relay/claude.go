@@ -5,11 +5,14 @@ import (
 	"claude-code-relay/common"
 	"claude-code-relay/model"
 	"claude-code-relay/service"
+	"compress/flate"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tidwall/sjson"
 	"io"
 	"log"
 	"net/http"
@@ -53,6 +56,8 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+
+	body, _ = sjson.SetBytes(body, "stream", true) // 强制流式输出
 
 	// 获取有效的访问token
 	accessToken, err := getValidAccessToken(account)
@@ -149,6 +154,30 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	}
 	defer common.CloseIO(resp.Body)
 
+	// 检查响应是否需要解压缩
+	var responseReader io.Reader = resp.Body
+	contentEncoding := resp.Header.Get("Content-Encoding")
+
+	switch strings.ToLower(contentEncoding) {
+	case "gzip":
+		gzipReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			log.Printf("[Claude API] 创建gzip解压缩器失败: %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		defer gzipReader.Close()
+		responseReader = gzipReader
+	case "deflate":
+		deflateReader := flate.NewReader(resp.Body)
+		defer deflateReader.Close()
+		responseReader = deflateReader
+	case "identity", "":
+		log.Printf("[Claude API] 响应未压缩，直接处理")
+	default:
+		log.Printf("[Claude API] 未知的Content-Encoding: %s，尝试直接处理", contentEncoding)
+	}
+
 	// 读取响应体
 	var responseBody []byte
 	var usageTokens *common.TokenUsage
@@ -156,7 +185,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	if resp.StatusCode >= 400 {
 		// 错误响应，直接读取全部内容
 		var readErr error
-		responseBody, readErr = io.ReadAll(resp.Body)
+		responseBody, readErr = io.ReadAll(responseReader)
 		if readErr != nil {
 			log.Printf("❌ 读取错误响应失败: %v", readErr)
 			c.AbortWithStatus(resp.StatusCode)
@@ -183,7 +212,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 	if resp.StatusCode < 400 {
 		// 成功响应，使用流式解析
-		usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
+		usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
 		if err != nil {
 			log.Println("stream copy and parse failed:", err.Error())
 		}

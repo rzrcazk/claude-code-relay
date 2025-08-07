@@ -5,15 +5,19 @@ import (
 	"claude-code-relay/common"
 	"claude-code-relay/model"
 	"claude-code-relay/service"
+	"compress/flate"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/sjson"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -35,6 +39,8 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		return
 	}
 
+	body, _ = sjson.SetBytes(body, "stream", true) // 强制流式输出
+
 	req, err := http.NewRequestWithContext(ctx, c.Request.Method, account.RequestURL+"/v1/messages?beta=true", bytes.NewBuffer(body))
 	if nil != err {
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -55,7 +61,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		"x-stainless-helper-method":                 "stream",
 		"x-app":                                     "cli",
 		"User-Agent":                                "claude-cli/1.0.44 (external, cli)",
-		"anthropic-beta":                            "fine-grained-tool-streaming-2025-05-14",
+		"anthropic-beta":                            "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 		"X-Stainless-Runtime-Version":               "v20.18.1",
 		"anthropic-dangerous-direct-browser-access": "true",
 	}
@@ -121,11 +127,39 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	}
 	defer common.CloseIO(resp.Body)
 
+	// 检查响应是否需要解压缩
+	var responseReader io.Reader = resp.Body
+	contentEncoding := resp.Header.Get("Content-Encoding")
+
+	switch strings.ToLower(contentEncoding) {
+	case "gzip":
+		gzipReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			log.Printf("[Claude Console] 创建gzip解压缩器失败: %v", err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		defer gzipReader.Close()
+		responseReader = gzipReader
+	case "deflate":
+		deflateReader := flate.NewReader(resp.Body)
+		defer deflateReader.Close()
+		responseReader = deflateReader
+	case "identity", "":
+		log.Printf("[Claude Console] 响应未压缩，直接处理")
+	default:
+		log.Printf("[Claude Console] 未知的Content-Encoding: %s，尝试直接处理", contentEncoding)
+	}
+
 	// 透传响应状态码
 	c.Status(resp.StatusCode)
 
-	// 透传响应头
+	// 透传响应头，但需要处理Content-Length以避免流式响应问题
 	for name, values := range resp.Header {
+		// 跳过Content-Length，让Gin自动处理
+		if strings.ToLower(name) == "content-length" {
+			continue
+		}
 		for _, value := range values {
 			c.Header(name, value)
 		}
@@ -133,7 +167,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 
 	// 解析token使用量
 	var usageTokens *common.TokenUsage
-	usageTokens, err = common.ParseStreamResponse(c.Writer, resp.Body)
+	usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
 	if err != nil {
 		log.Println("stream copy and parse failed:", err.Error())
 	}
