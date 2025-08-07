@@ -104,8 +104,8 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	req.Header.Del("Cookie")
 
 	// 处理流式请求的Accept头
-	isStream := gjson.GetBytes(body, "stream").Bool()
-	if isStream && c.Request.Header.Get("Accept") == "" {
+	isStream := true
+	if c.Request.Header.Get("Accept") == "" {
 		req.Header.Set("Accept", "text/event-stream")
 	}
 
