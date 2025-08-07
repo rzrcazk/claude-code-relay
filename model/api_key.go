@@ -26,6 +26,8 @@ type ApiKey struct {
 	CreatedAt                     Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
 	UpdatedAt                     Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
+	// 关联查询
+	Group *Group `json:"group" gorm:"-"`
 }
 
 type CreateApiKeyRequest struct {
@@ -85,6 +87,15 @@ func GetApiKeyById(id uint, userID uint) (*ApiKey, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 如果有分组ID，查询分组信息
+	if apiKey.GroupID > 0 {
+		var group Group
+		if err := DB.Where("id = ? AND user_id = ?", apiKey.GroupID, userID).First(&group).Error; err == nil {
+			apiKey.Group = &group
+		}
+	}
+
 	return &apiKey, nil
 }
 
@@ -131,6 +142,39 @@ func GetApiKeys(page, limit int, userID uint, groupID *uint) ([]ApiKey, int64, e
 	err = query.Offset(offset).Limit(limit).Find(&apiKeys).Error
 	if err != nil {
 		return nil, 0, err
+	}
+
+	// 批量查询分组信息
+	groupIDs := make(map[int]bool)
+	for _, apiKey := range apiKeys {
+		if apiKey.GroupID > 0 {
+			groupIDs[apiKey.GroupID] = true
+		}
+	}
+
+	if len(groupIDs) > 0 {
+		var ids []int
+		for id := range groupIDs {
+			ids = append(ids, id)
+		}
+
+		var groups []Group
+		DB.Where("id IN ? AND user_id = ?", ids, userID).Find(&groups)
+
+		// 创建分组映射
+		groupMap := make(map[int]*Group)
+		for i := range groups {
+			groupMap[int(groups[i].ID)] = &groups[i]
+		}
+
+		// 为每个API Key设置对应的分组信息
+		for i := range apiKeys {
+			if apiKeys[i].GroupID > 0 {
+				if group, exists := groupMap[apiKeys[i].GroupID]; exists {
+					apiKeys[i].Group = group
+				}
+			}
+		}
 	}
 
 	return apiKeys, total, nil
