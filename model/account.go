@@ -77,15 +77,17 @@ type CreateAccountRequest struct {
 type UpdateAccountRequest struct {
 	Name         string `json:"name" binding:"required,min=1,max=100"`
 	PlatformType string `json:"platform_type" binding:"required,oneof=claude claude_console"`
-	RequestURL   string `json:"request_url" binding:"required,url"`
-	SecretKey    string `json:"secret_key" binding:"required"`
-	GroupID      int    `json:"group_id"`
-	Priority     int    `json:"priority"`
+	RequestURL   string `json:"request_url"`
+	SecretKey    string `json:"secret_key"`
+	GroupID      int    `json:"group_id" binding:"min=0"`
+	Priority     int    `json:"priority" binding:"min=1"`
 	Weight       int    `json:"weight" binding:"min=1"`
 	EnableProxy  bool   `json:"enable_proxy"`
 	ProxyURI     string `json:"proxy_uri"`
 	ActiveStatus int    `json:"active_status" binding:"oneof=1 2"`
 	IsMax        bool   `json:"is_max"` // 是否是max账号
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 // 账号激活状态更新请求参数

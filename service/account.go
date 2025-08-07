@@ -103,6 +103,14 @@ func (s *AccountService) UpdateAccount(id uint, req *model.UpdateAccountRequest,
 		account.SecretKey = req.SecretKey
 	}
 
+	if req.AccessToken != "" {
+		account.AccessToken = req.AccessToken
+	}
+
+	if req.RefreshToken != "" {
+		account.RefreshToken = req.RefreshToken
+	}
+
 	if err := model.UpdateAccount(account); err != nil {
 		return nil, errors.New("更新账号失败")
 	}
