@@ -11,7 +11,7 @@ import (
 type ApiKey struct {
 	ID                            uint           `json:"id" gorm:"primaryKey"`
 	Name                          string         `json:"name" gorm:"type:varchar(100);not null"`
-	Key                           string         `json:"-" gorm:"type:varchar(100);uniqueIndex;not null"`
+	Key                           string         `json:"key" gorm:"type:varchar(100);uniqueIndex;not null"`
 	ExpiresAt                     *Time          `json:"expires_at" gorm:"type:datetime"`
 	Status                        int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
 	GroupID                       int            `json:"group_id" gorm:"default:0;index"`
