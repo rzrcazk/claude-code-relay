@@ -58,6 +58,16 @@ func ClaudeCodeAuth() gin.HandlerFunc {
 			return
 		}
 
+		// 判断是否达到每日限额
+		if keyInfo.DailyLimit > 0 && keyInfo.TodayTotalCost >= keyInfo.DailyLimit {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "API Key已达到每日使用限额",
+				"code":  40004,
+			})
+			c.Abort()
+			return
+		}
+
 		// API Key已经在model层验证了状态和过期时间
 		// 将API Key信息存储到上下文中供后续使用
 		c.Set("api_key_id", keyInfo.ID)

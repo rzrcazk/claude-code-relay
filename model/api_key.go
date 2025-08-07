@@ -22,6 +22,8 @@ type ApiKey struct {
 	TodayCacheReadInputTokens     int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
 	TodayCacheCreationInputTokens int            `json:"today_cache_creation_input_tokens" gorm:"default:0;comment:今日缓存创建输入tokens"`
 	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;comment:今日使用总费用(USD)"`
+	ModelRestriction              string         `json:"model_restriction" gorm:"type:text;default:'';comment:模型限制,逗号分隔"`
+	DailyLimit                    float64        `json:"daily_limit" gorm:"default:0;comment:日限额(美元),0表示不限制"`
 	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:datetime"`
 	CreatedAt                     Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
 	UpdatedAt                     Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
@@ -31,18 +33,22 @@ type ApiKey struct {
 }
 
 type CreateApiKeyRequest struct {
-	Name      string `json:"name" binding:"required"`
-	Key       string `json:"key"`
-	ExpiresAt *Time  `json:"expires_at"`
-	Status    int    `json:"status" binding:"oneof=1 2"`
-	GroupID   int    `json:"group_id"`
+	Name             string  `json:"name" binding:"required"`
+	Key              string  `json:"key"`
+	ExpiresAt        *Time   `json:"expires_at"`
+	Status           int     `json:"status" binding:"oneof=1 2"`
+	GroupID          int     `json:"group_id"`
+	ModelRestriction string  `json:"model_restriction"`
+	DailyLimit       float64 `json:"daily_limit"`
 }
 
 type UpdateApiKeyRequest struct {
-	Name      string `json:"name"`
-	ExpiresAt *Time  `json:"expires_at"`
-	Status    *int   `json:"status"`
-	GroupID   int    `json:"group_id"`
+	Name             string   `json:"name"`
+	ExpiresAt        *Time    `json:"expires_at"`
+	Status           *int     `json:"status"`
+	GroupID          int      `json:"group_id"`
+	ModelRestriction *string  `json:"model_restriction"`
+	DailyLimit       *float64 `json:"daily_limit"`
 }
 
 type ApiKeyListResult struct {
