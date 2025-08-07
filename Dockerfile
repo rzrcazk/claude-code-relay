@@ -1,6 +1,4 @@
-FROM golang:1.18-alpine AS builder
-
-RUN apk add --no-cache git gcc musl-dev sqlite-dev
+FROM golang:1.18 AS builder
 
 WORKDIR /app
 
@@ -13,7 +11,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o claude-code-relay
 
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates tzdata sqlite
+RUN apk --no-cache add ca-certificates tzdata sqlite wget
 
 ENV TZ=Asia/Shanghai
 
