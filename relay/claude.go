@@ -133,7 +133,6 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 			return
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
-		log.Printf("使用代理: %s", account.ProxyURI)
 	}
 
 	client := &http.Client{
@@ -172,10 +171,6 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		deflateReader := flate.NewReader(resp.Body)
 		defer deflateReader.Close()
 		responseReader = deflateReader
-	case "identity", "":
-		log.Printf("[Claude API] 响应未压缩，直接处理")
-	default:
-		log.Printf("[Claude API] 未知的Content-Encoding: %s，尝试直接处理", contentEncoding)
 	}
 
 	// 读取响应体

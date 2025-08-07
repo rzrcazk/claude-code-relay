@@ -145,10 +145,6 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		deflateReader := flate.NewReader(resp.Body)
 		defer deflateReader.Close()
 		responseReader = deflateReader
-	case "identity", "":
-		log.Printf("[Claude Console] 响应未压缩，直接处理")
-	default:
-		log.Printf("[Claude Console] 未知的Content-Encoding: %s，尝试直接处理", contentEncoding)
 	}
 
 	// 透传响应状态码
