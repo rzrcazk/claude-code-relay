@@ -1,21 +1,14 @@
 name: Build and Push Docker Image to Aliyun
 
-# 触发条件：推送到主分支或合并到主分支
+# 触发条件：只有推送到主分支时触发
 on:
   push:
     branches:
       - main
       - master
-  pull_request:
-    branches:
-      - main
-      - master
-    types: [closed]
 
 jobs:
   build-and-push:
-    # 只在推送到主分支或PR合并时运行
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
 
     runs-on: ubuntu-latest
 
