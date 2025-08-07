@@ -71,11 +71,26 @@ var MODEL_PRICING = map[string]ModelPricing{
 		CacheWrite: 3.75,
 		CacheRead:  0.30,
 	},
+
 	"claude-sonnet-4-20250514": {
 		Input:      3.00,
 		Output:     15.00,
 		CacheWrite: 3.75,
 		CacheRead:  0.30,
+	},
+
+	"claude-opus-4-20250514": {
+		Input:      15.00,
+		Output:     75.00,
+		CacheWrite: 18.75,
+		CacheRead:  1.50,
+	},
+
+	"claude-opus-4-1-20250805": {
+		Input:      15.00,
+		Output:     75.00,
+		CacheWrite: 18.75,
+		CacheRead:  1.50,
 	},
 
 	// Claude 3.5 Haiku
