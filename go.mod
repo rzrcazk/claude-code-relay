@@ -1,6 +1,6 @@
 module claude-code-relay
 
-go 1.18
+go 1.21
 
 require (
 	github.com/gin-contrib/cors v1.7.2
