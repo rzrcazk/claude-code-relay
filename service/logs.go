@@ -30,7 +30,7 @@ func (s *LogService) CreateLog(req *model.LogCreateRequest) (*model.Log, error) 
 }
 
 // CreateLogFromTokenUsage 根据TokenUsage创建日志记录（推荐使用）
-func (s *LogService) CreateLogFromTokenUsage(usage *common.TokenUsage, userID, apiKeyID uint, duration int64, isStream bool) (*model.Log, error) {
+func (s *LogService) CreateLogFromTokenUsage(usage *common.TokenUsage, userID, apiKeyID, accountID uint, duration int64, isStream bool) (*model.Log, error) {
 	if usage == nil {
 		return nil, errors.New("TokenUsage不能为空")
 	}
@@ -38,7 +38,7 @@ func (s *LogService) CreateLogFromTokenUsage(usage *common.TokenUsage, userID, a
 		return nil, errors.New("用户ID不能为空")
 	}
 
-	log, err := model.CreateLogFromTokenUsage(usage, userID, apiKeyID, duration, isStream)
+	log, err := model.CreateLogFromTokenUsage(usage, userID, apiKeyID, accountID, duration, isStream)
 	if err != nil {
 		return nil, errors.New("创建日志失败: " + err.Error())
 	}

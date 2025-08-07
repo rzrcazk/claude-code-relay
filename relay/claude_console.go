@@ -153,7 +153,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		duration := time.Since(startTime).Milliseconds()
 		logService := service.NewLogService()
 		go func() {
-			_, err := logService.CreateLogFromTokenUsage(usageTokens, apiKey.UserID, apiKey.ID, duration, isStream)
+			_, err := logService.CreateLogFromTokenUsage(usageTokens, apiKey.UserID, apiKey.ID, account.ID, duration, isStream)
 			if err != nil {
 				log.Printf("保存日志失败: %v", err)
 			}

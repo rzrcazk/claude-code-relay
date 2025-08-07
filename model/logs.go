@@ -122,12 +122,13 @@ func CreateLog(logReq *LogCreateRequest) (*Log, error) {
 }
 
 // CreateLogFromTokenUsage 根据TokenUsage创建日志记录
-func CreateLogFromTokenUsage(usage *common.TokenUsage, userID, apiKeyID uint, duration int64, isStream bool) (*Log, error) {
+func CreateLogFromTokenUsage(usage *common.TokenUsage, userID, apiKeyID, accountID uint, duration int64, isStream bool) (*Log, error) {
 	// 使用费用计算器计算详细费用
 	costResult := common.CalculateCost(usage)
 
 	logReq := &LogCreateRequest{
 		ModelName:                usage.Model,
+		AccountID:                accountID,
 		UserID:                   userID,
 		ApiKeyID:                 apiKeyID,
 		InputTokens:              usage.InputTokens,
