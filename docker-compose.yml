@@ -8,7 +8,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-claude123456}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-claude_code_relay}
-      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_USER: ${MYSQL_USER:-claude}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-claude123456}
     volumes:
       - mysql_data:/var/lib/mysql
@@ -38,7 +38,7 @@ services:
       # MySQL数据库连接配置
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
-      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_USER: ${MYSQL_USER:-claude}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-claude123456}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-claude_code_relay}
       
