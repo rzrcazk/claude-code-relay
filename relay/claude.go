@@ -72,7 +72,6 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	fixedHeaders := map[string]string{
 		"Authorization":                             "Bearer " + accessToken,
 		"anthropic-version":                         "2023-06-01",
-		"Content-Type":                              "application/json",
 		"X-Stainless-Retry-Count":                   "0",
 		"X-Stainless-Timeout":                       "600",
 		"X-Stainless-Lang":                          "js",
