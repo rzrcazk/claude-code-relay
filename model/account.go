@@ -2,6 +2,7 @@ package model
 
 import (
 	"gorm.io/gorm"
+	
 )
 
 type Account struct {
@@ -26,6 +27,7 @@ type Account struct {
 	EnableProxy                   bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
 	ProxyURI                      string         `json:"proxy_uri" gorm:"comment:代理URI字符串"`
 	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:timestamp"`
+	RateLimitEndTime              *Time          `json:"rate_limit_end_time" gorm:"comment:限流结束时间;type:timestamp"`
 	CurrentStatus                 int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
 	ActiveStatus                  int            `json:"active_status" gorm:"default:1;comment:激活状态(1:激活,2:禁用)"`
 	UserID                        uint           `json:"user_id" gorm:"not null;comment:所属用户ID"`
@@ -161,7 +163,7 @@ func GetAccountsByUserID(userID uint) ([]Account, error) {
 // 根据分组ID获取可用账号列表（按优先级和使用次数排序）
 func GetAvailableAccountsByGroupID(groupID int) ([]Account, error) {
 	var accounts []Account
-	err := DB.Where("group_id = ? AND current_status = 1 AND active_status = 1", groupID).
+	err := DB.Where("group_id = ? AND active_status = 1 AND (current_status = 1 OR (current_status = 3 AND (rate_limit_end_time IS NULL OR rate_limit_end_time < ?)))", groupID, time.Now()).
 		Order("priority ASC, today_usage_count ASC").
 		Find(&accounts).Error
 	if err != nil {
