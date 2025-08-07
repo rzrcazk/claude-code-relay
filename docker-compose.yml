@@ -27,7 +27,7 @@ services:
       - claude-network
 
   app:
-    build: .
+    image: registry.cn-hangzhou.aliyuncs.com/ripper/claude-code-relay:latest
     container_name: claude-code-relay-app
     restart: unless-stopped
     ports:
