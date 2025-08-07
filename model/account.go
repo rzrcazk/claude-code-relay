@@ -150,7 +150,7 @@ func GetAccountList(page, limit int, userID *uint) ([]Account, int64, error) {
 	err = query.Preload("User").
 		Offset(offset).
 		Limit(limit).
-		Order("created_at DESC").
+		Order("priority ASC, created_at DESC").
 		Find(&accounts).Error
 
 	if err != nil {
