@@ -40,6 +40,19 @@ func (s *AccountService) GetAccountList(page, limit int, userID *uint) (*model.A
 
 // CreateAccount 创建账号
 func (s *AccountService) CreateAccount(req *model.CreateAccountRequest, userID uint) (*model.Account, error) {
+	// 设置今日请求次数：获取同用户、同分组、同优先级可用账号的最大今日请求次数，然后减1
+	todayUsageCount := req.TodayUsageCount
+	if todayUsageCount == 0 && req.Priority > 0 {
+		maxUsageCount, err := model.GetMaxTodayUsageCountFromAvailableAccounts(userID, req.GroupID, req.Priority)
+		if err != nil {
+			return nil, errors.New("获取最大今日请求次数失败")
+		}
+		todayUsageCount = maxUsageCount - 1
+		if todayUsageCount < 0 {
+			todayUsageCount = 0
+		}
+	}
+
 	account := &model.Account{
 		Name:            req.Name,
 		PlatformType:    req.PlatformType,
@@ -55,7 +68,7 @@ func (s *AccountService) CreateAccount(req *model.CreateAccountRequest, userID u
 		AccessToken:     req.AccessToken,
 		RefreshToken:    req.RefreshToken,
 		ExpiresAt:       req.ExpiresAt,
-		TodayUsageCount: req.TodayUsageCount, // 如果没有设置则默认为0
+		TodayUsageCount: todayUsageCount,
 		UserID:          userID,
 	}
 
@@ -153,6 +166,19 @@ func (s *AccountService) UpdateAccountActiveStatus(id uint, activeStatus int, us
 	account, err := s.GetAccountByID(id, userID)
 	if err != nil {
 		return err
+	}
+
+	// 如果是启用账号（从禁用变为激活），设置今日请求次数
+	if account.ActiveStatus == 2 && activeStatus == 1 {
+		maxUsageCount, err := model.GetMaxTodayUsageCountFromAvailableAccounts(account.UserID, account.GroupID, account.Priority)
+		if err != nil {
+			return errors.New("获取最大今日请求次数失败")
+		}
+		todayUsageCount := maxUsageCount - 1
+		if todayUsageCount < 0 {
+			todayUsageCount = 0
+		}
+		account.TodayUsageCount = todayUsageCount
 	}
 
 	account.ActiveStatus = activeStatus

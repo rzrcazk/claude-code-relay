@@ -228,3 +228,13 @@ func GetAvailableAccountsByGroupID(groupID int) ([]Account, error) {
 	}
 	return accounts, nil
 }
+
+// 获取指定用户、分组和优先级下可用账号的最大今日请求次数
+func GetMaxTodayUsageCountFromAvailableAccounts(userID uint, groupID int, priority int) (int, error) {
+	var maxUsageCount int
+	err := DB.Model(&Account{}).
+		Where("user_id = ? AND group_id = ? AND priority = ? AND active_status = 1 AND current_status IN (1, 2)", userID, groupID, priority).
+		Select("COALESCE(MAX(today_usage_count), 0)").
+		Scan(&maxUsageCount).Error
+	return maxUsageCount, err
+}
