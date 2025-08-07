@@ -257,3 +257,120 @@ func DeleteAccount(c *gin.Context) {
 		"code":    constant.Success,
 	})
 }
+
+// UpdateAccountActiveStatus 更新账号激活状态
+func UpdateAccountActiveStatus(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "无效的账号ID",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	var req model.UpdateAccountActiveStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	user := c.MustGet("user").(*model.User)
+	var userID *uint
+
+	// 如果是普通用户，只能更新自己的账号
+	if user.Role != "admin" {
+		userID = &user.ID
+	}
+
+	accountService := service.NewAccountService()
+	err = accountService.UpdateAccountActiveStatus(uint(id), req.ActiveStatus, userID)
+	if err != nil {
+		var statusCode int
+		var code int
+		if err.Error() == "账号不存在" {
+			statusCode = http.StatusNotFound
+			code = constant.NotFound
+		} else if err.Error() == "无权访问此账号" {
+			statusCode = http.StatusForbidden
+			code = constant.Unauthorized
+		} else {
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新激活状态成功",
+		"code":    constant.Success,
+	})
+}
+
+// UpdateAccountCurrentStatus 更新账号当前状态
+func UpdateAccountCurrentStatus(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "无效的账号ID",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	var req model.UpdateAccountCurrentStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	user := c.MustGet("user").(*model.User)
+	var userID *uint
+
+	// 如果是普通用户，只能更新自己的账号
+	if user.Role != "admin" {
+		userID = &user.ID
+	}
+
+	accountService := service.NewAccountService()
+	err = accountService.UpdateAccountCurrentStatus(uint(id), req.CurrentStatus, userID)
+	if err != nil {
+		var statusCode int
+		var code int
+		if err.Error() == "账号不存在" {
+			statusCode = http.StatusNotFound
+			code = constant.NotFound
+		} else if err.Error() == "无权访问此账号" {
+			statusCode = http.StatusForbidden
+			code = constant.Unauthorized
+		} else if err.Error() == "当前状态不能设置为3" {
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		} else {
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "更新当前状态成功",
+		"code":    constant.Success,
+	})
+}

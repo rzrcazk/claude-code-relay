@@ -134,6 +134,42 @@ func (s *AccountService) GetAccountsByUserID(userID uint) ([]model.Account, erro
 	return accounts, nil
 }
 
+// UpdateAccountActiveStatus 更新账号激活状态
+func (s *AccountService) UpdateAccountActiveStatus(id uint, activeStatus int, userID *uint) error {
+	account, err := s.GetAccountByID(id, userID)
+	if err != nil {
+		return err
+	}
+
+	account.ActiveStatus = activeStatus
+
+	if err := model.UpdateAccount(account); err != nil {
+		return errors.New("更新账号激活状态失败")
+	}
+
+	return nil
+}
+
+// UpdateAccountCurrentStatus 更新账号当前状态(值不能为3)
+func (s *AccountService) UpdateAccountCurrentStatus(id uint, currentStatus int, userID *uint) error {
+	if currentStatus == 3 {
+		return errors.New("当前状态不能设置为3")
+	}
+
+	account, err := s.GetAccountByID(id, userID)
+	if err != nil {
+		return err
+	}
+
+	account.CurrentStatus = currentStatus
+
+	if err := model.UpdateAccount(account); err != nil {
+		return errors.New("更新账号当前状态失败")
+	}
+
+	return nil
+}
+
 // UpdateAccountStatus 根据响应状态码更新账号状态
 func (s *AccountService) UpdateAccountStatus(account *model.Account, statusCode int, usage *common.TokenUsage) {
 	// 根据状态码设置CurrentStatus

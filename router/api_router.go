@@ -59,11 +59,13 @@ func SetAPIRouter(server *gin.Engine) {
 			// 账号管理相关
 			account := authenticated.Group("/accounts")
 			{
-				account.GET("/list", controller.GetAccountList)         // 获取账号列表
-				account.POST("/create", controller.CreateAccount)       // 创建账号
-				account.GET("/detail/:id", controller.GetAccount)       // 获取账号详情
-				account.PUT("/update/:id", controller.UpdateAccount)    // 更新账号
-				account.DELETE("/delete/:id", controller.DeleteAccount) // 删除账号
+				account.GET("/list", controller.GetAccountList)                                  // 获取账号列表
+				account.POST("/create", controller.CreateAccount)                                // 创建账号
+				account.GET("/detail/:id", controller.GetAccount)                                // 获取账号详情
+				account.PUT("/update/:id", controller.UpdateAccount)                             // 更新账号
+				account.DELETE("/delete/:id", controller.DeleteAccount)                          // 删除账号
+				account.PUT("/update-active-status/:id", controller.UpdateAccountActiveStatus)   // 更新账号激活状态
+				account.PUT("/update-current-status/:id", controller.UpdateAccountCurrentStatus) // 更新账号当前状态
 			}
 
 			// Claude OAuth 相关
