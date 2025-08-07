@@ -45,6 +45,7 @@ func SetAPIRouter(server *gin.Engine) {
 			{
 				user.GET("/profile", controller.GetProfile)
 				user.PUT("/profile", controller.UpdateProfile)
+				user.PUT("/change-email", controller.ChangeEmail)
 			}
 
 			// 分组相关

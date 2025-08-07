@@ -31,6 +31,12 @@ type SendVerificationCodeRequest struct {
 	Type  string `json:"type" binding:"required"`
 }
 
+type ChangeEmailRequest struct {
+	NewEmail         string `json:"new_email" binding:"required,email"`
+	Password         string `json:"password" binding:"required"`
+	VerificationCode string `json:"verification_code" binding:"required"`
+}
+
 type UpdateProfileRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email" binding:"omitempty,email"`
@@ -286,6 +292,54 @@ func UpdateProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "更新成功",
+		"code":    constant.Success,
+	})
+}
+
+// ChangeEmail 更改绑定邮箱
+func ChangeEmail(c *gin.Context) {
+	var req ChangeEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	user := c.MustGet("user").(*model.User)
+	userService := service.NewUserService()
+
+	err := userService.ChangeEmail(user, req.NewEmail, req.Password, req.VerificationCode)
+	if err != nil {
+		var statusCode int
+		var code int
+		switch err.Error() {
+		case "当前密码错误":
+			statusCode = http.StatusBadRequest
+			code = constant.Unauthorized
+		case "验证码错误", "验证码已过期或不存在":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		case "邮箱已被其他用户使用":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		case "新邮箱不能与当前邮箱相同":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		default:
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "邮箱更改成功",
 		"code":    constant.Success,
 	})
 }

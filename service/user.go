@@ -5,6 +5,7 @@ import (
 	"claude-code-relay/constant"
 	"claude-code-relay/model"
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -174,6 +175,41 @@ func (s *UserService) UpdateProfile(currentUser *model.User, username, email, pa
 	if err := model.UpdateUser(currentUser); err != nil {
 		return errors.New("更新失败")
 	}
+
+	return nil
+}
+
+// ChangeEmail 更改用户邮箱
+func (s *UserService) ChangeEmail(currentUser *model.User, newEmail, password, verificationCode string) error {
+	// 验证当前密码
+	if currentUser.Password != common.HashPassword(password) {
+		return errors.New("当前密码错误")
+	}
+
+	// 检查新邮箱是否与当前邮箱相同
+	if newEmail == currentUser.Email {
+		return errors.New("新邮箱不能与当前邮箱相同")
+	}
+
+	// 验证新邮箱的验证码
+	err := common.VerifyCode(newEmail, verificationCode, common.EmailChange)
+	if err != nil {
+		return err
+	}
+
+	// 检查新邮箱是否已被其他用户使用
+	if existingUser, err := model.GetUserByEmail(newEmail); err == nil && existingUser.ID != currentUser.ID {
+		return errors.New("邮箱已被其他用户使用")
+	}
+
+	// 更新邮箱
+	currentUser.Email = newEmail
+	if err := model.UpdateUser(currentUser); err != nil {
+		return errors.New("更新邮箱失败")
+	}
+
+	// 记录日志
+	common.SysLog(fmt.Sprintf("用户 %s (ID: %d) 更改邮箱为: %s", currentUser.Username, currentUser.ID, newEmail))
 
 	return nil
 }
