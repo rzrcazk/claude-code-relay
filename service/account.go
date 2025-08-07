@@ -41,21 +41,22 @@ func (s *AccountService) GetAccountList(page, limit int, userID *uint) (*model.A
 // CreateAccount 创建账号
 func (s *AccountService) CreateAccount(req *model.CreateAccountRequest, userID uint) (*model.Account, error) {
 	account := &model.Account{
-		Name:         req.Name,
-		PlatformType: req.PlatformType,
-		RequestURL:   req.RequestURL,
-		SecretKey:    req.SecretKey,
-		GroupID:      req.GroupID,
-		Priority:     req.Priority,
-		Weight:       req.Weight,
-		EnableProxy:  req.EnableProxy,
-		ProxyURI:     req.ProxyURI,
-		ActiveStatus: req.ActiveStatus,
-		IsMax:        req.IsMax,
-		AccessToken:  req.AccessToken,
-		RefreshToken: req.RefreshToken,
-		ExpiresAt:    req.ExpiresAt,
-		UserID:       userID,
+		Name:            req.Name,
+		PlatformType:    req.PlatformType,
+		RequestURL:      req.RequestURL,
+		SecretKey:       req.SecretKey,
+		GroupID:         req.GroupID,
+		Priority:        req.Priority,
+		Weight:          req.Weight,
+		EnableProxy:     req.EnableProxy,
+		ProxyURI:        req.ProxyURI,
+		ActiveStatus:    req.ActiveStatus,
+		IsMax:           req.IsMax,
+		AccessToken:     req.AccessToken,
+		RefreshToken:    req.RefreshToken,
+		ExpiresAt:       req.ExpiresAt,
+		TodayUsageCount: req.TodayUsageCount, // 如果没有设置则默认为0
+		UserID:          userID,
 	}
 
 	if err := model.CreateAccount(account); err != nil {
@@ -109,6 +110,11 @@ func (s *AccountService) UpdateAccount(id uint, req *model.UpdateAccountRequest,
 
 	if req.RefreshToken != "" {
 		account.RefreshToken = req.RefreshToken
+	}
+
+	// 更新TodayUsageCount字段，如果请求中设置了该字段，则更新
+	if req.TodayUsageCount > 0 {
+		account.TodayUsageCount = req.TodayUsageCount
 	}
 
 	if err := model.UpdateAccount(account); err != nil {
