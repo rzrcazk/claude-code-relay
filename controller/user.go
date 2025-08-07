@@ -27,6 +27,17 @@ type UpdateProfileRequest struct {
 	Password string `json:"password" binding:"omitempty,min=6"`
 }
 
+type AdminCreateUserRequest struct {
+	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Role     string `json:"role" binding:"required"`
+}
+
+type AdminUpdateUserStatusRequest struct {
+	Status int `json:"status" binding:"required"`
+}
+
 // Login 用户登录
 func Login(c *gin.Context) {
 	var req LoginRequest
@@ -172,5 +183,92 @@ func GetUsers(c *gin.Context) {
 		"message": "获取成功",
 		"code":    constant.Success,
 		"data":    result,
+	})
+}
+
+// AdminCreateUser 管理员创建用户
+func AdminCreateUser(c *gin.Context) {
+	var req AdminCreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	userService := service.NewUserService()
+	err := userService.AdminCreateUser(req.Username, req.Email, req.Password, req.Role)
+	if err != nil {
+		var statusCode int
+		var code int
+		switch err.Error() {
+		case "用户名已存在", "邮箱已存在", "角色参数无效":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		default:
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "用户创建成功",
+		"code":    constant.Success,
+	})
+}
+
+// AdminUpdateUserStatus 管理员更新用户状态
+func AdminUpdateUserStatus(c *gin.Context) {
+	userIDStr := c.Param("id")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "用户ID参数无效",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	var req AdminUpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	userService := service.NewUserService()
+	err = userService.AdminUpdateUserStatus(uint(userID), req.Status)
+	if err != nil {
+		var statusCode int
+		var code int
+		switch err.Error() {
+		case "用户不存在":
+			statusCode = http.StatusNotFound
+			code = constant.ResourceNotFound
+		case "状态参数无效":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		default:
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "用户状态更新成功",
+		"code":    constant.Success,
 	})
 }

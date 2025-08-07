@@ -147,3 +147,57 @@ func (s *UserService) GetUsers(page, limit int) (*model.UserListResult, error) {
 
 	return result, nil
 }
+
+// AdminCreateUser 管理员创建用户
+func (s *UserService) AdminCreateUser(username, email, password, role string) error {
+	// 检查用户名是否已存在
+	if _, err := model.GetUserByUsername(username); err == nil {
+		return errors.New("用户名已存在")
+	}
+
+	// 检查邮箱是否已存在
+	if _, err := model.GetUserByEmail(email); err == nil {
+		return errors.New("邮箱已存在")
+	}
+
+	// 验证角色是否有效
+	if role != constant.RoleUser && role != constant.RoleAdmin {
+		return errors.New("角色参数无效")
+	}
+
+	user := &model.User{
+		Username: username,
+		Email:    email,
+		Password: common.HashPassword(password),
+		Role:     role,
+		Status:   constant.UserStatusActive,
+	}
+
+	if err := model.CreateUser(user); err != nil {
+		return errors.New("创建用户失败")
+	}
+
+	return nil
+}
+
+// AdminUpdateUserStatus 管理员更新用户状态
+func (s *UserService) AdminUpdateUserStatus(userID uint, status int) error {
+	// 获取用户
+	user, err := model.GetUserById(userID)
+	if err != nil {
+		return errors.New("用户不存在")
+	}
+
+	// 验证状态参数
+	if status != constant.UserStatusActive && status != constant.UserStatusInactive {
+		return errors.New("状态参数无效")
+	}
+
+	// 更新状态
+	user.Status = status
+	if err := model.UpdateUser(user); err != nil {
+		return errors.New("更新用户状态失败")
+	}
+
+	return nil
+}

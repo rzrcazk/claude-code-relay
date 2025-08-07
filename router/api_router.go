@@ -99,6 +99,8 @@ func SetAPIRouter(server *gin.Engine) {
 			admin.Use(middleware.AdminAuth())
 			{
 				admin.GET("/users", controller.GetUsers)
+				admin.POST("/users", controller.AdminCreateUser)
+				admin.PUT("/users/:id/status", controller.AdminUpdateUserStatus)
 				admin.GET("/logs", controller.GetApiLogs)
 				admin.GET("/dashboard", controller.GetDashboard)
 
