@@ -30,6 +30,7 @@ func SetAPIRouter(server *gin.Engine) {
 		{
 			auth.POST("/login", controller.Login)
 			auth.POST("/register", controller.Register)
+			auth.POST("/send-verification-code", controller.SendVerificationCode)
 		}
 
 		// 系统状态

@@ -5,6 +5,7 @@ import (
 	"claude-code-relay/constant"
 	"claude-code-relay/model"
 	"errors"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,17 +27,69 @@ type UserInfo struct {
 	Role     string `json:"role"`
 }
 
-// Login 用户登录
+// Login 用户登录 (保留原方法以兼容已有代码)
 func (s *UserService) Login(username, password string, c *gin.Context) (*LoginResult, error) {
-	user, err := model.GetUserByUsername(username)
-	if err != nil || user.Password != common.HashPassword(password) {
-		return nil, errors.New("用户名或密码错误")
+	return s.LoginWithPassword(username, "", password, c)
+}
+
+// LoginWithPassword 使用密码登录（支持用户名或邮箱）
+func (s *UserService) LoginWithPassword(username, email, password string, c *gin.Context) (*LoginResult, error) {
+	var user *model.User
+	var err error
+
+	// 根据提供的参数确定查询方式
+	if username != "" {
+		user, err = model.GetUserByUsername(username)
+		if err != nil || user.Password != common.HashPassword(password) {
+			return nil, errors.New("用户名或密码错误")
+		}
+	} else if email != "" {
+		user, err = model.GetUserByEmail(email)
+		if err != nil || user.Password != common.HashPassword(password) {
+			return nil, errors.New("邮箱或密码错误")
+		}
+	} else {
+		return nil, errors.New("用户名或邮箱必须提供其中一个")
 	}
 
 	if user.Status != constant.UserStatusActive {
 		return nil, errors.New("账户已被禁用")
 	}
 
+	return s.generateLoginResult(user)
+}
+
+// LoginWithVerificationCode 使用验证码登录
+func (s *UserService) LoginWithVerificationCode(email, verificationCode string, c *gin.Context) (*LoginResult, error) {
+	if email == "" || verificationCode == "" {
+		return nil, errors.New("邮箱和验证码不能为空")
+	}
+
+	// 验证验证码（使用登录验证码类型）
+	err := common.VerifyCode(email, verificationCode, common.LoginVerification)
+	if err != nil {
+		// 如果登录类型验证码不存在，尝试使用邮箱验证类型的验证码
+		err = common.VerifyCode(email, verificationCode, common.EmailVerification)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 根据邮箱查询用户
+	user, err := model.GetUserByEmail(email)
+	if err != nil {
+		return nil, errors.New("用户不存在")
+	}
+
+	if user.Status != constant.UserStatusActive {
+		return nil, errors.New("账户已被禁用")
+	}
+
+	return s.generateLoginResult(user)
+}
+
+// generateLoginResult 生成登录结果
+func (s *UserService) generateLoginResult(user *model.User) (*LoginResult, error) {
 	// 生成JWT token
 	token, err := common.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
