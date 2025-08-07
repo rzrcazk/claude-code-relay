@@ -84,6 +84,9 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	}
 
 	httpClientTimeout, _ := time.ParseDuration(os.Getenv("HTTP_CLIENT_TIMEOUT") + "s")
+	if httpClientTimeout == 0 {
+		httpClientTimeout = 120 * time.Second
+	}
 
 	// 创建基础Transport配置
 	transport := &http.Transport{
@@ -117,7 +120,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	defer closeIO(resp.Body)
+	defer common.CloseIO(resp.Body)
 
 	// 透传响应状态码
 	c.Status(resp.StatusCode)
@@ -155,12 +158,5 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 				log.Printf("保存日志失败: %v", err)
 			}
 		}()
-	}
-}
-
-func closeIO(c io.Closer) {
-	err := c.Close()
-	if nil != err {
-		log.Println(err)
 	}
 }

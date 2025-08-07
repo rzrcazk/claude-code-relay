@@ -220,7 +220,7 @@ func (o *OAuthHelper) FormatTokenResponse(accessToken, refreshToken string, expi
 	return &TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresAt:    expiresAt * 1000, // 转换为毫秒
+		ExpiresAt:    expiresAt,
 		Scopes:       scopeList,
 		IsMax:        true,
 	}

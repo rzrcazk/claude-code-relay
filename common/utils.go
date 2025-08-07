@@ -4,6 +4,8 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
+	"io"
+	"log"
 	"os"
 	"time"
 
@@ -54,4 +56,11 @@ func HashPassword(password string) string {
 
 func VerifyPassword(password, hashedPassword string) bool {
 	return HashPassword(password) == hashedPassword
+}
+
+func CloseIO(c io.Closer) {
+	err := c.Close()
+	if nil != err {
+		log.Println(err)
+	}
 }
