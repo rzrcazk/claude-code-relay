@@ -11,3 +11,4 @@ web/dist
 .claude
 CLAUDE.md
 .cursor
+out/
