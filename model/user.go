@@ -10,13 +10,13 @@ import (
 
 type User struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
-	Username  string         `json:"username" gorm:"uniqueIndex;not null"`
-	Email     string         `json:"email" gorm:"uniqueIndex;not null"`
-	Password  string         `json:"-" gorm:"not null"`
+	Username  string         `json:"username" gorm:"type:varchar(100);uniqueIndex;not null"`
+	Email     string         `json:"email" gorm:"type:varchar(200);uniqueIndex;not null"`
+	Password  string         `json:"-" gorm:"type:varchar(255);not null"`
 	Status    int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
-	Role      string         `json:"role" gorm:"default:user"`
-	CreatedAt Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt Time           `json:"updated_at" gorm:"type:timestamp"`
+	Role      string         `json:"role" gorm:"type:varchar(20);default:user"`
+	CreatedAt Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	UpdatedAt Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 

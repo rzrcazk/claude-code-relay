@@ -8,15 +8,15 @@ import (
 
 type Task struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
-	Title       string         `json:"title" gorm:"not null"`
-	Description string         `json:"description"`
-	Status      string         `json:"status" gorm:"default:pending"` // pending, running, completed, failed
-	Priority    int            `json:"priority" gorm:"default:1"`     // 1:低 2:中 3:高
+	Title       string         `json:"title" gorm:"type:varchar(200);not null"`
+	Description string         `json:"description" gorm:"type:text"`
+	Status      string         `json:"status" gorm:"type:varchar(20);default:pending"` // pending, running, completed, failed
+	Priority    int            `json:"priority" gorm:"default:1"`                      // 1:低 2:中 3:高
 	UserID      uint           `json:"user_id" gorm:"not null"`
-	ScheduleAt  Time           `json:"schedule_at" gorm:"type:timestamp"`
-	CompletedAt *Time          `json:"completed_at" gorm:"type:timestamp"`
-	CreatedAt   Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt   Time           `json:"updated_at" gorm:"type:timestamp"`
+	ScheduleAt  Time           `json:"schedule_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	CompletedAt *Time          `json:"completed_at" gorm:"type:datetime"`
+	CreatedAt   Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	UpdatedAt   Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联

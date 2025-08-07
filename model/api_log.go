@@ -2,15 +2,15 @@ package model
 
 type ApiLog struct {
 	ID         uint   `json:"id" gorm:"primaryKey"`
-	Method     string `json:"method" gorm:"not null"`
-	Path       string `json:"path" gorm:"not null"`
+	Method     string `json:"method" gorm:"type:varchar(10);not null"`
+	Path       string `json:"path" gorm:"type:varchar(500);not null"`
 	StatusCode int    `json:"status_code"`
 	UserID     uint   `json:"user_id"`
-	IP         string `json:"ip"`
-	UserAgent  string `json:"user_agent"`
-	RequestID  string `json:"request_id" gorm:"index"`
+	IP         string `json:"ip" gorm:"type:varchar(45)"`
+	UserAgent  string `json:"user_agent" gorm:"type:text"`
+	RequestID  string `json:"request_id" gorm:"type:varchar(50);index"`
 	Duration   int64  `json:"duration"` // 毫秒
-	CreatedAt  Time   `json:"created_at" gorm:"type:timestamp"`
+	CreatedAt  Time   `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
 
 	// 关联
 	User User `json:"user" gorm:"foreignKey:UserID"`

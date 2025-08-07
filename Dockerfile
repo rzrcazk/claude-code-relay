@@ -1,4 +1,4 @@
-FROM golang:1.21 AS builder
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
@@ -7,17 +7,17 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o claude-code-relay main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o claude-code-relay main.go
 
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates tzdata sqlite wget
+RUN apk --no-cache add ca-certificates tzdata wget
 
 ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/logs
 
 COPY --from=builder /app/claude-code-relay .
 

@@ -6,13 +6,13 @@ import (
 
 type Group struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
-	Name      string         `json:"name" gorm:"not null"`
-	Remark    string         `json:"remark"`
+	Name      string         `json:"name" gorm:"type:varchar(100);not null;uniqueIndex:idx_groups_user_name"`
+	Remark    string         `json:"remark" gorm:"type:text"`
 	Status    int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
-	UserID    uint           `json:"user_id" gorm:"not null;index"`
-	CreatedAt Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt Time           `json:"updated_at" gorm:"type:timestamp"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	UserID    uint           `json:"user_id" gorm:"not null;uniqueIndex:idx_groups_user_name"`
+	CreatedAt Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	UpdatedAt Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
+	DeletedAt gorm.DeletedAt `json:"-" gorm:"uniqueIndex:idx_groups_user_name"`
 }
 
 type CreateGroupRequest struct {
@@ -36,12 +36,6 @@ type GroupListResult struct {
 
 func (g *Group) TableName() string {
 	return "groups"
-}
-
-// 为了确保每个用户的分组名唯一，需要创建联合索引
-func (g *Group) BeforeCreate(tx *gorm.DB) error {
-	// 创建联合索引：user_id + name 唯一
-	return tx.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_groups_user_name ON groups(user_id, name) WHERE deleted_at IS NULL").Error
 }
 
 func CreateGroup(group *Group) error {

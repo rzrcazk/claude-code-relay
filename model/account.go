@@ -7,12 +7,12 @@ import (
 
 type Account struct {
 	ID                            uint           `json:"id" gorm:"primaryKey"`
-	Name                          string         `json:"name" gorm:"not null;comment:账号名称"`
-	PlatformType                  string         `json:"platform_type" gorm:"not null;comment:平台类型(claude/claude_console)"`
-	RequestURL                    string         `json:"request_url" gorm:"comment:请求地址"`
-	SecretKey                     string         `json:"-" gorm:"comment:请求秘钥"`
-	AccessToken                   string         `json:"-" gorm:"comment:claude的官方token"`
-	RefreshToken                  string         `json:"-" gorm:"comment:claude的官方刷新token"`
+	Name                          string         `json:"name" gorm:"type:varchar(100);not null;comment:账号名称"`
+	PlatformType                  string         `json:"platform_type" gorm:"type:varchar(50);not null;comment:平台类型(claude/claude_console)"`
+	RequestURL                    string         `json:"request_url" gorm:"type:varchar(500);comment:请求地址"`
+	SecretKey                     string         `json:"-" gorm:"type:text;comment:请求秘钥"`
+	AccessToken                   string         `json:"-" gorm:"type:text;comment:claude的官方token"`
+	RefreshToken                  string         `json:"-" gorm:"type:text;comment:claude的官方刷新token"`
 	ExpiresAt                     int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
 	IsMax                         bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
 	GroupID                       int            `json:"group_id" gorm:"default:0;comment:分组ID"`
@@ -25,14 +25,14 @@ type Account struct {
 	TodayCacheCreationInputTokens int            `json:"today_cache_creation_input_tokens" gorm:"default:0;comment:今日缓存创建输入tokens"`
 	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;comment:今日使用总费用(USD)"`
 	EnableProxy                   bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
-	ProxyURI                      string         `json:"proxy_uri" gorm:"comment:代理URI字符串"`
-	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:timestamp"`
-	RateLimitEndTime              *Time          `json:"rate_limit_end_time" gorm:"comment:限流结束时间;type:timestamp"`
+	ProxyURI                      string         `json:"proxy_uri" gorm:"type:varchar(500);comment:代理URI字符串"`
+	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:datetime"`
+	RateLimitEndTime              *Time          `json:"rate_limit_end_time" gorm:"comment:限流结束时间;type:datetime"`
 	CurrentStatus                 int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
 	ActiveStatus                  int            `json:"active_status" gorm:"default:1;comment:激活状态(1:激活,2:禁用)"`
 	UserID                        uint           `json:"user_id" gorm:"not null;comment:所属用户ID"`
-	CreatedAt                     Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt                     Time           `json:"updated_at" gorm:"type:timestamp"`
+	CreatedAt                     Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	UpdatedAt                     Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联用户

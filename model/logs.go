@@ -9,23 +9,23 @@ import (
 
 // Log 日志记录表 - 记录Claude Code调用的详细日志
 type Log struct {
-	ID                       string  `json:"id" gorm:"primaryKey;type:varchar(19)"`        // 雪花算法ID，支持排序
-	ModelName                string  `json:"model_name" gorm:"not null;index"`             // 模型名称，如claude-3-5-sonnet-20241022
-	AccountID                uint    `json:"account_id" gorm:"index"`                      // 账户ID
-	UserID                   uint    `json:"user_id" gorm:"index"`                         // 用户ID
-	ApiKeyID                 uint    `json:"api_key_id" gorm:"index"`                      // API Key ID
-	InputTokens              int     `json:"input_tokens" gorm:"default:0"`                // 输入tokens数量
-	OutputTokens             int     `json:"output_tokens" gorm:"default:0"`               // 输出tokens数量
-	CacheReadInputTokens     int     `json:"cache_read_input_tokens" gorm:"default:0"`     // 缓存读取输入tokens数量
-	CacheCreationInputTokens int     `json:"cache_creation_input_tokens" gorm:"default:0"` // 缓存创建输入tokens数量
-	InputCost                float64 `json:"input_cost" gorm:"default:0"`                  // 输入费用(USD)
-	OutputCost               float64 `json:"output_cost" gorm:"default:0"`                 // 输出费用(USD)
-	CacheWriteCost           float64 `json:"cache_write_cost" gorm:"default:0"`            // 缓存写入费用(USD)
-	CacheReadCost            float64 `json:"cache_read_cost" gorm:"default:0"`             // 缓存读取费用(USD)
-	TotalCost                float64 `json:"total_cost" gorm:"default:0"`                  // 总费用(USD)
-	IsStream                 bool    `json:"is_stream" gorm:"default:false"`               // 是否为流式输出
-	Duration                 int64   `json:"duration"`                                     // 请求总耗时(毫秒)
-	CreatedAt                Time    `json:"created_at" gorm:"type:timestamp"`             // 创建时间
+	ID                       string  `json:"id" gorm:"primaryKey;type:varchar(19)"`                     // 雪花算法ID，支持排序
+	ModelName                string  `json:"model_name" gorm:"type:varchar(100);not null;index"`        // 模型名称，如claude-3-5-sonnet-20241022
+	AccountID                uint    `json:"account_id" gorm:"index"`                                   // 账户ID
+	UserID                   uint    `json:"user_id" gorm:"index"`                                      // 用户ID
+	ApiKeyID                 uint    `json:"api_key_id" gorm:"index"`                                   // API Key ID
+	InputTokens              int     `json:"input_tokens" gorm:"default:0"`                             // 输入tokens数量
+	OutputTokens             int     `json:"output_tokens" gorm:"default:0"`                            // 输出tokens数量
+	CacheReadInputTokens     int     `json:"cache_read_input_tokens" gorm:"default:0"`                  // 缓存读取输入tokens数量
+	CacheCreationInputTokens int     `json:"cache_creation_input_tokens" gorm:"default:0"`              // 缓存创建输入tokens数量
+	InputCost                float64 `json:"input_cost" gorm:"default:0"`                               // 输入费用(USD)
+	OutputCost               float64 `json:"output_cost" gorm:"default:0"`                              // 输出费用(USD)
+	CacheWriteCost           float64 `json:"cache_write_cost" gorm:"default:0"`                         // 缓存写入费用(USD)
+	CacheReadCost            float64 `json:"cache_read_cost" gorm:"default:0"`                          // 缓存读取费用(USD)
+	TotalCost                float64 `json:"total_cost" gorm:"default:0"`                               // 总费用(USD)
+	IsStream                 bool    `json:"is_stream" gorm:"default:false"`                            // 是否为流式输出
+	Duration                 int64   `json:"duration"`                                                  // 请求总耗时(毫秒)
+	CreatedAt                Time    `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"` // 创建时间
 
 	// 关联关系
 	User   User   `json:"user,omitempty" gorm:"foreignKey:UserID"`

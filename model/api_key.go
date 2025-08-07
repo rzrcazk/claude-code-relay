@@ -10,9 +10,9 @@ import (
 
 type ApiKey struct {
 	ID                            uint           `json:"id" gorm:"primaryKey"`
-	Name                          string         `json:"name" gorm:"not null"`
-	Key                           string         `json:"-" gorm:"uniqueIndex;not null"`
-	ExpiresAt                     *Time          `json:"expires_at" gorm:"type:timestamp"`
+	Name                          string         `json:"name" gorm:"type:varchar(100);not null"`
+	Key                           string         `json:"-" gorm:"type:varchar(100);uniqueIndex;not null"`
+	ExpiresAt                     *Time          `json:"expires_at" gorm:"type:datetime"`
 	Status                        int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
 	GroupID                       int            `json:"group_id" gorm:"default:0;index"`
 	UserID                        uint           `json:"user_id" gorm:"not null;index"`
@@ -22,9 +22,9 @@ type ApiKey struct {
 	TodayCacheReadInputTokens     int            `json:"today_cache_read_input_tokens" gorm:"default:0;comment:今日缓存读取输入tokens"`
 	TodayCacheCreationInputTokens int            `json:"today_cache_creation_input_tokens" gorm:"default:0;comment:今日缓存创建输入tokens"`
 	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;comment:今日使用总费用(USD)"`
-	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:timestamp"`
-	CreatedAt                     Time           `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt                     Time           `json:"updated_at" gorm:"type:timestamp"`
+	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:datetime"`
+	CreatedAt                     Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	UpdatedAt                     Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
@@ -91,7 +91,7 @@ func GetApiKeyById(id uint, userID uint) (*ApiKey, error) {
 // GetApiKeyByKey 根据API Key获取
 func GetApiKeyByKey(key string) (*ApiKey, error) {
 	var apiKey ApiKey
-	err := DB.Where("key = ? AND status = 1", key).First(&apiKey).Error
+	err := DB.Where("`key` = ? AND status = 1", key).First(&apiKey).Error
 	if err != nil {
 		return nil, err
 	}

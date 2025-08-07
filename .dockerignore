@@ -22,3 +22,5 @@ web/dist
 docker-compose.yml
 docs
 out
+redis_data
+app_logs
