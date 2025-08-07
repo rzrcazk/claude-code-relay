@@ -190,6 +190,30 @@ func (s *LogService) DeleteLogsByUser(userID uint) error {
 	return nil
 }
 
+// GetLogsWithFilters 根据过滤条件获取日志列表
+func (s *LogService) GetLogsWithFilters(filters *model.LogFilters, page, limit int) (*model.LogListResult, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	logs, total, err := model.GetLogsWithFilters(filters, page, limit)
+	if err != nil {
+		return nil, errors.New("获取日志列表失败: " + err.Error())
+	}
+
+	result := &model.LogListResult{
+		Logs:  logs,
+		Total: total,
+		Page:  page,
+		Limit: limit,
+	}
+
+	return result, nil
+}
+
 // DeleteExpiredLogs 删除过期的日志记录
 func (s *LogService) DeleteExpiredLogs(months int) (int64, error) {
 	if months <= 0 {

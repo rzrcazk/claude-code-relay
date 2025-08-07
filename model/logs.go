@@ -69,6 +69,19 @@ type LogStatsResult struct {
 	StreamPercent  float64 `json:"stream_percent"`
 }
 
+// LogFilters 日志查询过滤条件
+type LogFilters struct {
+	UserID    *uint      `json:"user_id"`    // 用户ID筛选
+	AccountID *uint      `json:"account_id"` // 账号ID筛选
+	ApiKeyID  *uint      `json:"api_key_id"` // API Key ID筛选
+	ModelName *string    `json:"model_name"` // 模型名称筛选
+	IsStream  *bool      `json:"is_stream"`  // 是否流式请求筛选
+	StartTime *time.Time `json:"start_time"` // 开始时间
+	EndTime   *time.Time `json:"end_time"`   // 结束时间
+	MinCost   *float64   `json:"min_cost"`   // 最小费用
+	MaxCost   *float64   `json:"max_cost"`   // 最大费用
+}
+
 func (l *Log) TableName() string {
 	return "logs"
 }
@@ -281,6 +294,89 @@ func DeleteLogById(id string) error {
 // DeleteLogsByUser 删除指定用户的所有日志记录
 func DeleteLogsByUser(userID uint) error {
 	return DB.Where("user_id = ?", userID).Delete(&Log{}).Error
+}
+
+// GetLogsWithFilters 根据过滤条件获取日志列表
+func GetLogsWithFilters(filters *LogFilters, page, limit int) ([]Log, int64, error) {
+	var logs []Log
+	var total int64
+
+	// 构建查询条件
+	query := DB.Model(&Log{})
+	countQuery := DB.Model(&Log{})
+
+	// 应用过滤条件
+	if filters != nil {
+		// 用户ID筛选
+		if filters.UserID != nil {
+			query = query.Where("user_id = ?", *filters.UserID)
+			countQuery = countQuery.Where("user_id = ?", *filters.UserID)
+		}
+
+		// 账号ID筛选
+		if filters.AccountID != nil {
+			query = query.Where("account_id = ?", *filters.AccountID)
+			countQuery = countQuery.Where("account_id = ?", *filters.AccountID)
+		}
+
+		// API Key ID筛选
+		if filters.ApiKeyID != nil {
+			query = query.Where("api_key_id = ?", *filters.ApiKeyID)
+			countQuery = countQuery.Where("api_key_id = ?", *filters.ApiKeyID)
+		}
+
+		// 模型名称筛选
+		if filters.ModelName != nil {
+			query = query.Where("model_name = ?", *filters.ModelName)
+			countQuery = countQuery.Where("model_name = ?", *filters.ModelName)
+		}
+
+		// 是否流式请求筛选
+		if filters.IsStream != nil {
+			query = query.Where("is_stream = ?", *filters.IsStream)
+			countQuery = countQuery.Where("is_stream = ?", *filters.IsStream)
+		}
+
+		// 时间范围筛选
+		if filters.StartTime != nil {
+			query = query.Where("created_at >= ?", *filters.StartTime)
+			countQuery = countQuery.Where("created_at >= ?", *filters.StartTime)
+		}
+
+		if filters.EndTime != nil {
+			query = query.Where("created_at <= ?", *filters.EndTime)
+			countQuery = countQuery.Where("created_at <= ?", *filters.EndTime)
+		}
+
+		// 费用范围筛选
+		if filters.MinCost != nil {
+			query = query.Where("total_cost >= ?", *filters.MinCost)
+			countQuery = countQuery.Where("total_cost >= ?", *filters.MinCost)
+		}
+
+		if filters.MaxCost != nil {
+			query = query.Where("total_cost <= ?", *filters.MaxCost)
+			countQuery = countQuery.Where("total_cost <= ?", *filters.MaxCost)
+		}
+	}
+
+	// 先获取总数
+	err := countQuery.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询
+	offset := (page - 1) * limit
+	err = query.Preload("User").Preload("ApiKey").
+		Offset(offset).Limit(limit).
+		Order("id DESC"). // 按ID倒序，新记录在前
+		Find(&logs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
 }
 
 // DeleteExpiredLogs 删除过期的日志记录

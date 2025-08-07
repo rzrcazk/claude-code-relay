@@ -29,8 +29,9 @@ const (
 	InvalidParams          = 40000
 	Unauthorized           = 40001
 	UserStatusAbnormal     = 40002
-	InsufficientPrivileges = 40003
-	NotFound               = 40004
+	Forbidden              = 40003
+	InsufficientPrivileges = 40004
+	NotFound               = 40005
 	TooManyRequests        = 42901
 	InternalServerError    = 50000
 
