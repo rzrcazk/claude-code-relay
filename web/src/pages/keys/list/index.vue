@@ -20,7 +20,6 @@
         :row-key="rowKey"
         vertical-align="top"
         :hover="true"
-        height="72vh"
         :pagination="pagination"
         :selected-row-keys="selectedRowKeys"
         :loading="dataLoading"
@@ -120,6 +119,13 @@
           />
         </t-form-item>
 
+        <t-form-item label="分组" name="group_id">
+          <t-select v-model="formData.group_id" placeholder="请选择分组" clearable :loading="groupOptionsLoading">
+            <t-option :value="0" label="全局共享组" />
+            <t-option v-for="group in groupOptions" :key="group.id" :value="group.id" :label="group.name" />
+          </t-select>
+        </t-form-item>
+
         <t-form-item label="状态" name="status">
           <t-radio-group v-model="formData.status">
             <t-radio :value="1">启用</t-radio>
@@ -163,6 +169,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import type { ApiKey, CreateApiKeyRequest, UpdateApiKeyRequest } from '@/api/apikey';
 import { createApiKey, deleteApiKey, getApiKeys, updateApiKey, updateApiKeyStatus } from '@/api/apikey';
+import type { Group } from '@/api/group';
+import { getAllGroups } from '@/api/group';
 import { prefix } from '@/config/global';
 import { useSettingStore } from '@/store';
 
@@ -271,6 +279,10 @@ const formRules = reactive<FormRules<CreateApiKeyRequest & UpdateApiKeyRequest>>
 const deleteVisible = ref(false);
 const deleteItems = ref<ApiKey[]>([]);
 
+// 分组相关
+const groupOptions = ref<Group[]>([]);
+const groupOptionsLoading = ref(false);
+
 // 计算属性
 const headerAffixedTop = computed(
   () =>
@@ -357,9 +369,22 @@ const disableDate = (date: Date): boolean => {
   return date < new Date();
 };
 
+// 获取分组选项
+const fetchGroupOptions = async () => {
+  groupOptionsLoading.value = true;
+  try {
+    groupOptions.value = await getAllGroups();
+  } catch (error) {
+    console.error('获取分组选项失败:', error);
+    MessagePlugin.error('获取分组选项失败');
+  } finally {
+    groupOptionsLoading.value = false;
+  }
+};
+
 // 操作相关方法
 
-const handleCreate = () => {
+const handleCreate = async () => {
   editingItem.value = null;
   Object.assign(formData, {
     name: '',
@@ -370,10 +395,11 @@ const handleCreate = () => {
     model_restriction: '',
     daily_limit: 0,
   });
+  await fetchGroupOptions(); // 加载分组选项
   formVisible.value = true;
 };
 
-const handleEdit = (item: ApiKey) => {
+const handleEdit = async (item: ApiKey) => {
   editingItem.value = item;
   Object.assign(formData, {
     name: item.name,
@@ -384,6 +410,7 @@ const handleEdit = (item: ApiKey) => {
     model_restriction: item.model_restriction || '',
     daily_limit: item.daily_limit,
   });
+  await fetchGroupOptions(); // 加载分组选项
   formVisible.value = true;
 };
 

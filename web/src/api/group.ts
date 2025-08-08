@@ -3,6 +3,7 @@ import { request } from '@/utils/request';
 // API 分组接口
 const Api = {
   GetList: '/v1/groups/list',
+  GetAll: '/v1/groups/all',
   Create: '/v1/groups/create',
   Update: '/v1/groups/update',
   Delete: '/v1/groups/delete',
@@ -56,6 +57,15 @@ export function getGroupList(params?: GroupListParams) {
   return request.get<GroupListResponse>({
     url: Api.GetList,
     params,
+  });
+}
+
+/**
+ * 获取所有分组（用于下拉选择）
+ */
+export function getAllGroups() {
+  return request.get<Group[]>({
+    url: Api.GetAll,
   });
 }
 

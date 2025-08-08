@@ -23,7 +23,6 @@
         :row-key="rowKey"
         vertical-align="top"
         :hover="true"
-        height="72vh"
         :pagination="pagination"
         :selected-row-keys="selectedRowKeys"
         :loading="dataLoading"
@@ -131,13 +130,7 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     colKey: 'name',
     ellipsis: true,
   },
-  {
-    title: '描述',
-    align: 'left',
-    width: 250,
-    colKey: 'remark',
-    ellipsis: true,
-  },
+
   { title: '状态', colKey: 'status', width: 100 },
   {
     title: 'API密钥数量',
@@ -148,6 +141,13 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     title: '账号数量',
     colKey: 'account_count',
     width: 120,
+  },
+  {
+    title: '描述',
+    align: 'left',
+    width: 240,
+    colKey: 'remark',
+    ellipsis: true,
   },
   {
     title: '创建时间',

@@ -66,8 +66,8 @@ func UpdateApiKey(id, userID uint, req *model.UpdateApiKeyRequest) (*model.ApiKe
 	}
 
 	// 如果指定了分组ID，验证分组是否存在且属于用户
-	if req.GroupID != 0 {
-		_, err := model.GetGroupById(req.GroupID, userID)
+	if req.GroupID != nil && *req.GroupID != 0 {
+		_, err := model.GetGroupById(*req.GroupID, userID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("指定的分组不存在")
@@ -91,8 +91,14 @@ func UpdateApiKey(id, userID uint, req *model.UpdateApiKeyRequest) (*model.ApiKe
 	if req.Status != nil {
 		apiKey.Status = *req.Status
 	}
-	if req.GroupID != 0 {
-		apiKey.GroupID = req.GroupID
+	if req.GroupID != nil {
+		apiKey.GroupID = *req.GroupID
+	}
+	if req.ModelRestriction != nil {
+		apiKey.ModelRestriction = *req.ModelRestriction
+	}
+	if req.DailyLimit != nil {
+		apiKey.DailyLimit = *req.DailyLimit
 	}
 
 	err = model.UpdateApiKey(apiKey)

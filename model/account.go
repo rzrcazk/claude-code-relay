@@ -80,7 +80,7 @@ type UpdateAccountRequest struct {
 	PlatformType    string `json:"platform_type" binding:"required,oneof=claude claude_console"`
 	RequestURL      string `json:"request_url"`
 	SecretKey       string `json:"secret_key"`
-	GroupID         int    `json:"group_id" binding:"min=0"`
+	GroupID         *int   `json:"group_id" binding:"omitempty,min=0"`
 	Priority        int    `json:"priority" binding:"min=1"`
 	Weight          int    `json:"weight" binding:"min=1"`
 	EnableProxy     bool   `json:"enable_proxy"`

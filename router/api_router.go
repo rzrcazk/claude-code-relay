@@ -55,6 +55,7 @@ func SetAPIRouter(server *gin.Engine) {
 			group := authenticated.Group("/groups")
 			{
 				group.GET("/list", controller.GetGroups)            // 获取分组列表
+				group.GET("/all", controller.GetAllGroups)          // 获取所有分组（用于下拉选择）
 				group.POST("/create", controller.CreateGroup)       // 创建分组
 				group.GET("/detail/:id", controller.GetGroup)       // 获取分组详情
 				group.PUT("/update/:id", controller.UpdateGroup)    // 更新分组

@@ -1,1 +1,1 @@
-export const prefix = 'claude-code-relay';
+export const prefix = 'tdesign-starter';

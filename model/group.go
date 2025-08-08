@@ -73,6 +73,18 @@ func DeleteGroup(id uint) error {
 	return DB.Delete(&Group{}, id).Error
 }
 
+// GetAllGroups 获取所有分组（不分页）
+func GetAllGroups(userID uint) ([]Group, error) {
+	var groups []Group
+
+	err := DB.Where("user_id = ? AND status = 1", userID).Find(&groups).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}
+
 func GetGroups(page, limit int, userID uint) ([]Group, int64, error) {
 	var groups []Group
 	var total int64
