@@ -18,8 +18,6 @@
       <register v-else @register-success="switchType('login')" />
       <tdesign-setting />
     </div>
-
-    <footer class="copyright">Copyright @ 2025 Ripper. All Rights Reserved</footer>
   </div>
 </template>
 <script setup lang="ts">

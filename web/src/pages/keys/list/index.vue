@@ -36,14 +36,7 @@
           <t-tag v-else theme="danger" variant="light"> 禁用 </t-tag>
         </template>
 
-        <template #usage="{ row }">
-          <div class="usage-info">
-            <p>使用次数：{{ row.today_usage_count }}</p>
-            <p>输入Token：{{ formatNumber(row.today_input_tokens) }}</p>
-            <p>输出Token：{{ formatNumber(row.today_output_tokens) }}</p>
-            <p>预计费用：${{ row.today_total_cost.toFixed(4) }}</p>
-          </div>
-        </template>
+        <template #today_total_cost="{ row }"> ${{ row.today_total_cost.toFixed(4) }} </template>
 
         <template #daily_limit="{ row }">
           <t-tag theme="default" variant="light"> ${{ row.daily_limit }} </t-tag>
@@ -203,9 +196,14 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 140,
   },
   {
-    title: '今日使用情况',
-    colKey: 'usage',
-    width: 180,
+    title: '今日使用次数',
+    colKey: 'today_usage_count',
+    width: 140,
+  },
+  {
+    title: '今日费用',
+    colKey: 'today_total_cost',
+    width: 160,
   },
   {
     title: '过期时间',

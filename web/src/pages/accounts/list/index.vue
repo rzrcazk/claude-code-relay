@@ -1,11 +1,16 @@
 <template>
   <div>
-    <t-row>
-      <t-alert
-        theme="info"
-        message="账号调度逻辑: 优先级越高, 权重越大, 今日使用次数越少, 则被调用的概率越大; 同分组下相同优先级的账号优先调用今日使用量最少的账号."
-      />
-    </t-row>
+    <div class="info-banner">
+      <div class="info-banner-icon">
+        <t-icon name="info-circle-filled" />
+      </div>
+      <div class="info-banner-content">
+        <div class="info-banner-title">账号调度逻辑</div>
+        <div class="info-banner-text">
+          优先级越高，权重越大，今日使用次数越少，则被调用的概率越大；同分组下相同优先级的账号优先调用今日使用量最少的账号
+        </div>
+      </div>
+    </div>
 
     <t-card class="list-card-container" :bordered="false">
       <t-row justify="space-between">
@@ -104,6 +109,7 @@
 
         <template #op="{ row }">
           <t-space size="2px">
+            <t-button variant="text" size="small" theme="warning" @click="handleTest(row)"> 测试 </t-button>
             <t-button variant="text" size="small" theme="primary" @click="handleEdit(row)"> 编辑 </t-button>
             <t-button
               variant="text"
@@ -314,6 +320,7 @@ import {
   exchangeCode,
   getAccountList,
   getOAuthURL,
+  testAccount,
   updateAccount,
   updateAccountActiveStatus,
   updateAccountCurrentStatus,
@@ -355,9 +362,14 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 180,
   },
   {
-    title: '类型',
-    colKey: 'is_max',
-    width: 80,
+    title: '当前状态',
+    colKey: 'current_status',
+    width: 120,
+  },
+  {
+    title: '激活状态',
+    colKey: 'active_status',
+    width: 100,
   },
   {
     title: '代理',
@@ -375,6 +387,11 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 80,
   },
   {
+    title: '类型',
+    colKey: 'is_max',
+    width: 80,
+  },
+  {
     title: '今日使用',
     colKey: 'today_usage_count',
     width: 100,
@@ -382,16 +399,6 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
   {
     title: '今日费用',
     colKey: 'today_total_cost',
-    width: 100,
-  },
-  {
-    title: '当前状态',
-    colKey: 'current_status',
-    width: 120,
-  },
-  {
-    title: '激活状态',
-    colKey: 'active_status',
     width: 100,
   },
   {
@@ -414,7 +421,7 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     title: '操作',
     align: 'center',
     fixed: 'right',
-    width: 160,
+    width: 200,
     colKey: 'op',
   },
 ];
@@ -563,6 +570,21 @@ const handlePageChange = (pageInfo: any) => {
 
 const handleSelectChange = (value: (string | number)[]) => {
   selectedRowKeys.value = value;
+};
+
+// 测试账号
+const handleTest = async (row: Account) => {
+  try {
+    const res = await testAccount(row.id);
+    if (res.success) {
+      MessagePlugin.success(res.message);
+    } else {
+      MessagePlugin.error(res.message);
+    }
+  } catch (error) {
+    console.error('测试账号失败:', error);
+    MessagePlugin.error('测试账号失败');
+  }
 };
 
 // 操作相关方法
@@ -867,6 +889,59 @@ onMounted(async () => {
   .t-textarea {
     font-family: monospace;
     font-size: 12px;
+  }
+}
+
+.info-banner {
+  background: linear-gradient(135deg, #e6f3ff 0%, #f0f8ff 100%);
+  border: 1px solid #91caff;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #1890ff;
+  }
+
+  .info-banner-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    
+    .t-icon {
+      font-size: 18px;
+      color: #1890ff;
+    }
+  }
+
+  .info-banner-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .info-banner-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1890ff;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .info-banner-text {
+    font-size: 13px;
+    color: #595959;
+    line-height: 1.6;
+    margin: 0;
   }
 }
 </style>

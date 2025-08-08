@@ -5,7 +5,7 @@ import (
 	"claude-code-relay/middleware"
 	"claude-code-relay/model"
 	"claude-code-relay/router"
-	"claude-code-relay/service"
+	"claude-code-relay/scheduled"
 	"fmt"
 	"log"
 	"net/http"
@@ -55,8 +55,8 @@ func main() {
 	}
 
 	// 初始化定时任务服务
-	service.InitCronService()
-	defer service.StopCronService()
+	scheduled.InitCronService()
+	defer scheduled.StopCronService()
 
 	// 初始化HTTP服务器
 	server := gin.New()
@@ -107,7 +107,7 @@ func main() {
 	common.SysLog("Shutting down server...")
 
 	// 停止定时任务服务
-	service.StopCronService()
+	scheduled.StopCronService()
 
 	common.SysLog("Server stopped gracefully")
 }

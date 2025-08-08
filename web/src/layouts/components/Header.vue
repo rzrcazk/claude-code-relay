@@ -150,7 +150,9 @@ const navToGitHub = () => {
 };
 
 const navToHelper = () => {
-  window.open('http://tdesign.tencent.com/starter/docs/get-started');
+  router.push({
+    path: '/help/index',
+  });
 };
 </script>
 <style lang="less" scoped>

@@ -1,8 +1,12 @@
-package service
+package scheduled
 
 import (
 	"claude-code-relay/common"
+	"claude-code-relay/constant"
 	"claude-code-relay/model"
+	"claude-code-relay/relay"
+	"claude-code-relay/service"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -36,6 +40,13 @@ func (s *CronService) Start() {
 	_, err = s.cron.AddFunc("0 0 1 * * *", s.cleanExpiredLogs)
 	if err != nil {
 		log.Printf("Failed to add log cleanup cron job: %v", err)
+		return
+	}
+
+	// 每30分钟执行一次账号异常恢复测试
+	_, err = s.cron.AddFunc("0 */30 * * * *", s.recoverAbnormalAccounts)
+	if err != nil {
+		log.Printf("Failed to add account recovery cron job: %v", err)
 		return
 	}
 
@@ -167,7 +178,7 @@ func (s *CronService) cleanExpiredLogs() {
 	// 从环境变量获取日志保留月数，默认为3个月
 	retentionMonths := getLogRetentionMonths()
 
-	logService := NewLogService()
+	logService := service.NewLogService()
 	deletedCount, err := logService.DeleteExpiredLogs(retentionMonths)
 	if err != nil {
 		common.SysError("Failed to clean expired logs: " + err.Error())
@@ -195,12 +206,85 @@ func getLogRetentionMonths() int {
 	return months
 }
 
+// recoverAbnormalAccounts 恢复异常账号测试
+func (s *CronService) recoverAbnormalAccounts() {
+	startTime := time.Now()
+	common.SysLog("Starting abnormal accounts recovery task")
+
+	// 筛选current_status==2且active_status==1的账号
+	var abnormalAccounts []model.Account
+	err := model.DB.Where("current_status = ? AND active_status = ?", 2, 1).Find(&abnormalAccounts).Error
+	if err != nil {
+		common.SysError("Failed to query abnormal accounts: " + err.Error())
+		return
+	}
+
+	if len(abnormalAccounts) == 0 {
+		common.SysLog("No abnormal accounts found for recovery testing")
+		return
+	}
+
+	common.SysLog(fmt.Sprintf("Found %d abnormal accounts to test", len(abnormalAccounts)))
+
+	recoveredCount := 0
+	failedCount := 0
+
+	// 逐个测试异常账号
+	for _, account := range abnormalAccounts {
+		if s.testAndRecoverAccount(&account) {
+			recoveredCount++
+			common.SysLog(fmt.Sprintf("Account %s (ID: %d) recovered successfully", account.Name, account.ID))
+		} else {
+			failedCount++
+		}
+	}
+
+	duration := time.Since(startTime)
+	common.SysLog(fmt.Sprintf("Abnormal accounts recovery task completed in %s. Recovered: %d, Failed: %d", duration.String(), recoveredCount, failedCount))
+}
+
+// testAndRecoverAccount 测试并恢复单个账号
+func (s *CronService) testAndRecoverAccount(account *model.Account) bool {
+	var statusCode int
+	var err string
+
+	// 根据平台类型调用不同的测试函数
+	switch account.PlatformType {
+	case constant.PlatformClaude:
+		statusCode, err = relay.TestsHandleClaudeRequest(account)
+	case constant.PlatformClaudeConsole:
+		statusCode, err = relay.TestHandleClaudeConsoleRequest(account)
+	default:
+		common.SysError(fmt.Sprintf("Unsupported platform type for account %s (ID: %d): %s", account.Name, account.ID, account.PlatformType))
+		return false
+	}
+
+	// 检查测试结果：状态码在200-300之间且无错误视为成功
+	if err == "" && statusCode >= 200 && statusCode < 300 {
+		// 测试成功，恢复账号状态为正常
+		updateErr := model.DB.Model(account).Update("current_status", 1).Error
+		if updateErr != nil {
+			common.SysError(fmt.Sprintf("Failed to recover account %s (ID: %d): %v", account.Name, account.ID, updateErr))
+			return false
+		}
+		return true
+	} else {
+		// 测试失败，记录日志但不改变状态
+		if err != "" {
+			common.SysLog(fmt.Sprintf("Account %s (ID: %d) test failed: %s", account.Name, account.ID, err))
+		} else {
+			common.SysLog(fmt.Sprintf("Account %s (ID: %d) test failed with status code: %d", account.Name, account.ID, statusCode))
+		}
+		return false
+	}
+}
+
 // ManualCleanExpiredLogs 手动清理过期日志（用于测试或管理员操作）
 func (s *CronService) ManualCleanExpiredLogs() (int64, error) {
 	common.SysLog("Manual expired logs cleanup triggered")
 
 	retentionMonths := getLogRetentionMonths()
-	logService := NewLogService()
+	logService := service.NewLogService()
 	deletedCount, err := logService.DeleteExpiredLogs(retentionMonths)
 	if err != nil {
 		return 0, err
@@ -208,4 +292,36 @@ func (s *CronService) ManualCleanExpiredLogs() (int64, error) {
 
 	common.SysLog("Manual expired logs cleanup completed, deleted " + strconv.FormatInt(deletedCount, 10) + " records")
 	return deletedCount, nil
+}
+
+// ManualRecoverAbnormalAccounts 手动触发异常账号恢复测试（用于管理员操作）
+func (s *CronService) ManualRecoverAbnormalAccounts() (int, int, error) {
+	common.SysLog("Manual abnormal accounts recovery triggered")
+
+	// 筛选current_status==2且active_status==1的账号
+	var abnormalAccounts []model.Account
+	err := model.DB.Where("current_status = ? AND active_status = ?", 2, 1).Find(&abnormalAccounts).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if len(abnormalAccounts) == 0 {
+		common.SysLog("No abnormal accounts found for recovery testing")
+		return 0, 0, nil
+	}
+
+	recoveredCount := 0
+	failedCount := 0
+
+	// 逐个测试异常账号
+	for _, account := range abnormalAccounts {
+		if s.testAndRecoverAccount(&account) {
+			recoveredCount++
+		} else {
+			failedCount++
+		}
+	}
+
+	common.SysLog(fmt.Sprintf("Manual abnormal accounts recovery completed. Recovered: %d, Failed: %d", recoveredCount, failedCount))
+	return recoveredCount, failedCount, nil
 }
