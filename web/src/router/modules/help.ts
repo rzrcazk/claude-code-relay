@@ -13,6 +13,7 @@ export default [
       title: '帮助文档',
       icon: shallowRef(HelpCircleIcon),
       orderNo: 999,
+      hidden: true,
     },
     children: [
       {
