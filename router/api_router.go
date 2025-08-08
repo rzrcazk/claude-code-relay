@@ -11,8 +11,8 @@ import (
 
 func SetAPIRouter(server *gin.Engine) {
 
-	// 全局限流：每分钟60次请求
-	server.Use(middleware.RateLimit(60, time.Minute))
+	// 全局限流：每分钟300次请求
+	server.Use(middleware.RateLimit(300, time.Minute))
 
 	// 健康检查
 	server.GET("/health", func(c *gin.Context) {

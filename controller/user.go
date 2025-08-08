@@ -509,10 +509,10 @@ func buildMenuByRole(role string) []MenuItem {
 			},
 		},
 		{
-			Path:      "/api-keys",
-			Name:      "api-keys",
+			Path:      "/keys",
+			Name:      "keys",
 			Component: "LAYOUT",
-			Redirect:  "/api-keys/list",
+			Redirect:  "/keys/list",
 			Meta: MenuMeta{
 				Title: "API密钥",
 				Icon:  "secured",
@@ -521,7 +521,7 @@ func buildMenuByRole(role string) []MenuItem {
 				{
 					Path:      "list",
 					Name:      "ApiKeysList",
-					Component: "/api-keys/list/index",
+					Component: "/keys/list/index",
 					Meta: MenuMeta{
 						Title: "密钥管理",
 					},
