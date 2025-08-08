@@ -43,7 +43,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
     ],
 
     server: {
-      port: 3005,
+      port: 3001,
       host: '0.0.0.0',
       allowedHosts: true,
       proxy: {

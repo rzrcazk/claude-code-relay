@@ -10,10 +10,7 @@ export default [
     redirect: '/dashboard/base',
     name: 'dashboard',
     meta: {
-      title: {
-        zh_CN: '仪表盘',
-        en_US: 'Dashboard',
-      },
+      title: '仪表盘',
       icon: shallowRef(DashboardIcon),
       orderNo: 0,
     },
@@ -23,20 +20,14 @@ export default [
         name: 'DashboardBase',
         component: () => import('@/pages/dashboard/base/index.vue'),
         meta: {
-          title: {
-            zh_CN: '概览仪表盘',
-            en_US: 'Overview',
-          },
+          title: '概览仪表盘',
         },
       },
       {
         path: 'dashboard',
         name: 'Dashboard',
         meta: {
-          title: {
-            zh_CN: '报表',
-            en_US: 'Dashboard',
-          },
+          title: '报表',
         },
         children: [
           {
@@ -44,10 +35,7 @@ export default [
             name: 'Detail',
             component: () => import('@/pages/dashboard/detail/index.vue'),
             meta: {
-              title: {
-                zh_CN: '统计报表',
-                en_US: 'Dashboard Detail',
-              },
+              title: '统计报表',
             },
           },
         ],

@@ -2,7 +2,7 @@ import type { TabValue } from 'tdesign-vue-next';
 import type { LocationQueryRaw, RouteRecordName } from 'vue-router';
 
 export interface RouteMeta {
-  title?: string | Record<string, string>;
+  title?: string;
   icon?: string;
   expanded?: boolean;
   orderNo?: number;
@@ -17,7 +17,7 @@ export interface RouteMeta {
 export interface MenuRoute {
   // TODO: menuitem 组件实际支持 string 类型但是类型错误，暂时使用 any 类型避免打包错误待组件类型修复
   path: any;
-  title?: string | Record<string, string>;
+  title?: string;
   name?: string;
   icon?:
     | string

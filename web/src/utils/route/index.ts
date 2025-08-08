@@ -1,7 +1,4 @@
-import cloneDeep from 'lodash/cloneDeep';
-
 import type { RouteItem } from '@/api/model/permissionModel';
-import type { RouteMeta } from '@/types/interface';
 import {
   BLANK_LAYOUT,
   EXCEPTION_COMPONENT,
@@ -32,27 +29,29 @@ let dynamicViewsModules: Record<string, () => Promise<Recordable>>;
 // 动态引入路由组件
 function asyncImportRoute(routes: RouteItem[] | undefined) {
   dynamicViewsModules = dynamicViewsModules || import.meta.glob('../../pages/**/*.vue');
-  if (!routes) return;
+  if (!routes || !Array.isArray(routes)) return;
 
-  routes.forEach(async (item) => {
+  routes.forEach((item) => {
+    if (!item) return;
+
     const { component, name } = item;
     const { children } = item;
 
-    if (component) {
+    if (component && typeof component === 'string') {
       const layoutFound = LayoutMap.get(component.toUpperCase());
       if (layoutFound) {
         item.component = layoutFound;
       } else {
         item.component = dynamicImport(dynamicViewsModules, component);
       }
-    } else if (name) {
+    } else if (name && !component) {
       item.component = PARENT_LAYOUT();
     }
 
-    // 动态从包内引入单个Icon,如果没有网络环境可以使用这种方式 但是会导致产物存在多个chunk
-    // if (item.meta.icon) item.meta.icon = await getMenuIcon(item.meta.icon);
-
-    children && asyncImportRoute(children);
+    // 递归处理子路由
+    if (children && Array.isArray(children) && children.length > 0) {
+      asyncImportRoute(children);
+    }
   });
 }
 
@@ -82,29 +81,26 @@ function dynamicImport(dynamicViewsModules: Record<string, () => Promise<Recorda
 
 // 将背景对象变成路由对象
 export function transformObjectToRoute<T = RouteItem>(routeList: RouteItem[]): T[] {
-  routeList.forEach(async (route) => {
-    const component = route.component as string;
+  if (!routeList || !Array.isArray(routeList)) {
+    return [PAGE_NOT_FOUND_ROUTE] as unknown as T[];
+  }
 
-    if (component) {
-      if (component.toUpperCase() === 'LAYOUT') {
-        route.component = LayoutMap.get(component.toUpperCase());
-      } else {
-        route.children = [cloneDeep(route)];
-        route.component = LAYOUT;
-        route.name = `${route.name}Parent`;
-        route.path = '';
-        route.meta = (route.meta || {}) as RouteMeta;
-      }
-    } else {
-      throw new Error('component is undefined');
+  const processedRoutes = routeList.map((route) => {
+    if (!route) return route;
+
+    // 创建新的路由对象，避免修改原对象
+    const newRoute = { ...route };
+    const component = newRoute.component as string;
+
+    if (component && typeof component === 'string' && component.toUpperCase() === 'LAYOUT') {
+      newRoute.component = LayoutMap.get(component.toUpperCase());
     }
 
-    route.children && asyncImportRoute(route.children);
-
-    // 动态从包内引入单个Icon,如果没有网络环境可以使用这种方式 但是会导致产物存在多个chunk
-    // if (route.meta.icon)
-    // route.meta.icon = await getMenuIcon(route.meta.icon);
+    return newRoute;
   });
 
-  return [PAGE_NOT_FOUND_ROUTE, ...routeList] as unknown as T[];
+  // 处理路由组件
+  asyncImportRoute(processedRoutes);
+
+  return [PAGE_NOT_FOUND_ROUTE, ...processedRoutes] as unknown as T[];
 }
