@@ -10,9 +10,9 @@
       @expand="onExpanded"
     >
       <template #logo>
-        <span v-if="showLogo" :class="`${prefix}-side-nav-logo-wrapper`" @click="goHome">
-          <component :is="getLogo()" :class="logoCls" />
-        </span>
+        <div style="font-size: 18px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+          Claude Code Relay
+        </div>
       </template>
       <menu-content :nav-data="menu" />
       <template #operations>
@@ -36,7 +36,6 @@ import { getActive } from '@/router';
 import { useSettingStore } from '@/store';
 import type { MenuRoute, ModeType } from '@/types/interface';
 
-import pgk from '../../../package.json';
 import MenuContent from './MenuContent.vue';
 
 const { menu, showLogo, isFixed, layout, theme, isCompact } = defineProps({
