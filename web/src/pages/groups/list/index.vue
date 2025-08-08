@@ -1,12 +1,13 @@
 <template>
   <div>
+    <t-row>
+      <t-alert theme="info" message="温馨提示: 分组还可用于拼车场景, 每个 API KEY 只能调用相同分组下的账号资源!" />
+    </t-row>
+
     <t-card class="list-card-container" :bordered="false">
       <t-row justify="space-between">
         <div class="left-operation-container">
           <t-button @click="handleCreate"> 创建分组 </t-button>
-          <t-button v-if="selectedRowKeys.length > 0" theme="danger" variant="outline" @click="handleBatchDelete">
-            批量删除
-          </t-button>
         </div>
         <div class="search-input">
           <t-input v-model="searchValue" placeholder="搜索分组名称" clearable @enter="handleSearch">
@@ -388,6 +389,7 @@ onMounted(() => {
   :deep(.t-card__body) {
     padding: 0;
   }
+  margin-top: 10px;
 }
 
 .left-operation-container {

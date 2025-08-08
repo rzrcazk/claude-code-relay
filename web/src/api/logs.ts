@@ -45,7 +45,7 @@ export interface LogQueryParams {
   model_name?: string;
   is_stream?: boolean;
   start_time?: string; // 格式: 2024-01-01 15:04:05
-  end_time?: string;   // 格式: 2024-01-01 15:04:05
+  end_time?: string; // 格式: 2024-01-01 15:04:05
   min_cost?: number;
   max_cost?: number;
 }
