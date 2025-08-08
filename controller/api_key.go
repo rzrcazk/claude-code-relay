@@ -197,7 +197,7 @@ func UpdateApiKeyStatus(c *gin.Context) {
 	}
 
 	var req struct {
-		Status int `json:"status" binding:"required,oneof=0 1"`
+		Status *int `json:"status" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -207,11 +207,20 @@ func UpdateApiKeyStatus(c *gin.Context) {
 		return
 	}
 
+	// 验证status值范围
+	if req.Status == nil || (*req.Status != 0 && *req.Status != 1) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "status参数必须为0或1",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
 	// 从认证中获取用户ID
 	user := c.MustGet("user").(*model.User)
 	userID := user.ID
 
-	err = service.UpdateApiKeyStatusCom(uint(idInt), userID, req.Status)
+	err = service.UpdateApiKeyStatusCom(uint(idInt), userID, *req.Status)
 	if err != nil {
 		var statusCode int
 		var code int
@@ -230,7 +239,7 @@ func UpdateApiKeyStatus(c *gin.Context) {
 	}
 
 	statusText := "禁用"
-	if req.Status == 1 {
+	if *req.Status == 1 {
 		statusText = "启用"
 	}
 

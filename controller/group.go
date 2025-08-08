@@ -158,6 +158,28 @@ func DeleteGroup(c *gin.Context) {
 	})
 }
 
+// GetAllGroups 获取所有分组（用于下拉选择）
+func GetAllGroups(c *gin.Context) {
+	// 从认证中获取用户ID
+	user := c.MustGet("user").(*model.User)
+	userID := user.ID
+
+	groups, err := service.GetAllGroups(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取分组选项成功",
+		"code":    constant.Success,
+		"data":    groups,
+	})
+}
+
 // GetGroups 获取分组列表
 func GetGroups(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

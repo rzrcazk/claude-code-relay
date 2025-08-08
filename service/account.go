@@ -105,7 +105,9 @@ func (s *AccountService) UpdateAccount(id uint, req *model.UpdateAccountRequest,
 	account.Name = req.Name
 	account.PlatformType = req.PlatformType
 	account.RequestURL = req.RequestURL
-	account.GroupID = req.GroupID
+	if req.GroupID != nil {
+		account.GroupID = *req.GroupID
+	}
 	account.Priority = req.Priority
 	account.Weight = req.Weight
 	account.EnableProxy = req.EnableProxy

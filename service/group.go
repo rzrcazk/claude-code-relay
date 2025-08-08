@@ -102,6 +102,10 @@ func DeleteGroup(id string, userID uint) error {
 	return model.DeleteGroup(group.ID)
 }
 
+func GetAllGroups(userID uint) ([]model.Group, error) {
+	return model.GetAllGroups(userID)
+}
+
 func GetGroupList(page, limit int, userID uint) (*model.GroupListResult, error) {
 	if page <= 0 {
 		page = 1

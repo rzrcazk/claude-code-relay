@@ -4,6 +4,7 @@ import (
 	"claude-code-relay/controller"
 	"claude-code-relay/middleware"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,8 +12,8 @@ import (
 
 func SetAPIRouter(server *gin.Engine) {
 
-	// 全局限流：每分钟60次请求
-	server.Use(middleware.RateLimit(60, time.Minute))
+	// 全局限流：每分钟300次请求
+	server.Use(middleware.RateLimit(300, time.Minute))
 
 	// 健康检查
 	server.GET("/health", func(c *gin.Context) {
@@ -48,10 +49,14 @@ func SetAPIRouter(server *gin.Engine) {
 				user.PUT("/change-email", controller.ChangeEmail)
 			}
 
+			// 菜单相关
+			authenticated.GET("/menu-list", controller.GetMenuList)
+
 			// 分组相关
 			group := authenticated.Group("/groups")
 			{
 				group.GET("/list", controller.GetGroups)            // 获取分组列表
+				group.GET("/all", controller.GetAllGroups)          // 获取所有分组（用于下拉选择）
 				group.POST("/create", controller.CreateGroup)       // 创建分组
 				group.GET("/detail/:id", controller.GetGroup)       // 获取分组详情
 				group.PUT("/update/:id", controller.UpdateGroup)    // 更新分组
@@ -123,7 +128,19 @@ func SetAPIRouter(server *gin.Engine) {
 		}
 	}
 
-	// 静态文件服务（为前端预留）
-	server.Static("/static", "./web/static")
-	server.StaticFile("/", "./web/index.html")
+	// 前端静态文件服务
+	server.Static("/assets", "./web/dist/assets")
+	server.Static("/static", "./web/dist/static")
+
+	// 前端路由处理 - 对于前端路由，返回 index.html
+	server.NoRoute(func(c *gin.Context) {
+		// 如果是 API 请求，返回404
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") || strings.HasPrefix(c.Request.URL.Path, "/health") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "API not found"})
+			return
+		}
+
+		// 对于前端路由，返回 index.html
+		c.File("./web/dist/index.html")
+	})
 }

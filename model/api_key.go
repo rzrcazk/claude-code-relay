@@ -46,7 +46,7 @@ type UpdateApiKeyRequest struct {
 	Name             string   `json:"name"`
 	ExpiresAt        *Time    `json:"expires_at"`
 	Status           *int     `json:"status"`
-	GroupID          int      `json:"group_id"`
+	GroupID          *int     `json:"group_id"`
 	ModelRestriction *string  `json:"model_restriction"`
 	DailyLimit       *float64 `json:"daily_limit"`
 }

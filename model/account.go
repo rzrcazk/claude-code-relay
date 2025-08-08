@@ -10,9 +10,9 @@ type Account struct {
 	Name                          string         `json:"name" gorm:"type:varchar(100);not null;comment:账号名称"`
 	PlatformType                  string         `json:"platform_type" gorm:"type:varchar(50);not null;comment:平台类型(claude/claude_console)"`
 	RequestURL                    string         `json:"request_url" gorm:"type:varchar(500);comment:请求地址"`
-	SecretKey                     string         `json:"-" gorm:"type:text;comment:请求秘钥"`
-	AccessToken                   string         `json:"-" gorm:"type:text;comment:claude的官方token"`
-	RefreshToken                  string         `json:"-" gorm:"type:text;comment:claude的官方刷新token"`
+	SecretKey                     string         `json:"secret_key" gorm:"type:text;comment:请求秘钥"`
+	AccessToken                   string         `json:"access_token" gorm:"type:text;comment:claude的官方token"`
+	RefreshToken                  string         `json:"refresh_token" gorm:"type:text;comment:claude的官方刷新token"`
 	ExpiresAt                     int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
 	IsMax                         bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
 	GroupID                       int            `json:"group_id" gorm:"default:0;comment:分组ID"`
@@ -80,7 +80,7 @@ type UpdateAccountRequest struct {
 	PlatformType    string `json:"platform_type" binding:"required,oneof=claude claude_console"`
 	RequestURL      string `json:"request_url"`
 	SecretKey       string `json:"secret_key"`
-	GroupID         int    `json:"group_id" binding:"min=0"`
+	GroupID         *int   `json:"group_id" binding:"omitempty,min=0"`
 	Priority        int    `json:"priority" binding:"min=1"`
 	Weight          int    `json:"weight" binding:"min=1"`
 	EnableProxy     bool   `json:"enable_proxy"`
@@ -94,12 +94,12 @@ type UpdateAccountRequest struct {
 
 // 账号激活状态更新请求参数
 type UpdateAccountActiveStatusRequest struct {
-	ActiveStatus int `json:"active_status" binding:"required,oneof=1 2"`
+	ActiveStatus *int `json:"active_status" binding:"required"`
 }
 
 // 账号当前状态更新请求参数
 type UpdateAccountCurrentStatusRequest struct {
-	CurrentStatus int `json:"current_status" binding:"required,oneof=1 2"`
+	CurrentStatus *int `json:"current_status" binding:"required"`
 }
 
 func (a *Account) TableName() string {

@@ -13,6 +13,10 @@ type Group struct {
 	CreatedAt Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
 	UpdatedAt Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"uniqueIndex:idx_groups_user_name"`
+
+	// 统计字段，不存储在数据库中
+	ApiKeyCount  int `json:"api_key_count" gorm:"-"`
+	AccountCount int `json:"account_count" gorm:"-"`
 }
 
 type CreateGroupRequest struct {
@@ -69,6 +73,18 @@ func DeleteGroup(id uint) error {
 	return DB.Delete(&Group{}, id).Error
 }
 
+// GetAllGroups 获取所有分组（不分页）
+func GetAllGroups(userID uint) ([]Group, error) {
+	var groups []Group
+
+	err := DB.Where("user_id = ? AND status = 1", userID).Find(&groups).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}
+
 func GetGroups(page, limit int, userID uint) ([]Group, int64, error) {
 	var groups []Group
 	var total int64
@@ -82,6 +98,25 @@ func GetGroups(page, limit int, userID uint) ([]Group, int64, error) {
 	err = DB.Where("user_id = ?", userID).Offset(offset).Limit(limit).Find(&groups).Error
 	if err != nil {
 		return nil, 0, err
+	}
+
+	// 为每个分组统计API密钥和账号数量
+	for i := range groups {
+		// 统计API密钥数量
+		var apiKeyCount int64
+		err = DB.Model(&ApiKey{}).Where("group_id = ? AND user_id = ?", groups[i].ID, userID).Count(&apiKeyCount).Error
+		if err != nil {
+			return nil, 0, err
+		}
+		groups[i].ApiKeyCount = int(apiKeyCount)
+
+		// 统计账号数量
+		var accountCount int64
+		err = DB.Model(&Account{}).Where("group_id = ? AND user_id = ?", groups[i].ID, userID).Count(&accountCount).Error
+		if err != nil {
+			return nil, 0, err
+		}
+		groups[i].AccountCount = int(accountCount)
 	}
 
 	return groups, total, nil
