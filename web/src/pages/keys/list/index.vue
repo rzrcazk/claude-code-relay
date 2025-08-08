@@ -95,7 +95,7 @@
       @confirm="handleFormConfirm"
       @cancel="handleFormCancel"
     >
-      <t-form ref="formRef" :model="formData" :rules="formRules" label-align="top" label-width="120px">
+      <t-form ref="formRef" :model="formData" label-align="top" label-width="120px">
         <t-form-item label="密钥名称" name="name">
           <t-input v-model="formData.name" placeholder="请输入密钥名称" />
         </t-form-item>
@@ -163,7 +163,7 @@
 </template>
 <script setup lang="ts">
 import { SearchIcon } from 'tdesign-icons-vue-next';
-import type { FormInstanceFunctions, FormRules, PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
+import type { FormInstanceFunctions, PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 
@@ -269,10 +269,6 @@ const formData = reactive<CreateApiKeyRequest & UpdateApiKeyRequest>({
   group_id: 0,
   model_restriction: '',
   daily_limit: 0,
-});
-
-const formRules = reactive<FormRules<CreateApiKeyRequest & UpdateApiKeyRequest>>({
-  name: [{ required: true, message: '请输入密钥名称', trigger: 'blur', type: 'error' }],
 });
 
 // 删除相关
@@ -473,15 +469,6 @@ const handleToggleStatus = async (item: ApiKey) => {
 const handleDelete = (items: ApiKey[]) => {
   deleteItems.value = items;
   deleteVisible.value = true;
-};
-
-const handleBatchDelete = () => {
-  const selectedItems = data.value.filter((item) => selectedRowKeys.value.includes(item.id));
-  if (selectedItems.length === 0) {
-    MessagePlugin.warning('请先选择要删除的密钥');
-    return;
-  }
-  handleDelete(selectedItems);
 };
 
 const handleDeleteConfirm = async () => {

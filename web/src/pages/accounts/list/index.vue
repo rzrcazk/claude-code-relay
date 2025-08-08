@@ -718,15 +718,6 @@ const handleDelete = (items: Account[]) => {
   deleteVisible.value = true;
 };
 
-const _handleBatchDelete = () => {
-  const selectedItems = data.value.filter((item) => selectedRowKeys.value.includes(item.id));
-  if (selectedItems.length === 0) {
-    MessagePlugin.warning('请先选择要删除的账号');
-    return;
-  }
-  handleDelete(selectedItems);
-};
-
 const handleDeleteConfirm = async () => {
   try {
     if (deleteItems.value.length === 1) {
