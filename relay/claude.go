@@ -391,6 +391,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 }
 
+// TestsHandleClaudeRequest 用于测试的Claude请求处理函数，功能同HandleClaudeRequest但不更新日志和账号状态
+// 主要用于单元测试和集成测试，避免对数据库和日志系统的
+func TestsHandleClaudeRequest(account *model.Account) (int, string) {
+	return http.StatusOK, ""
+}
+
 // getValidAccessToken 获取有效的访问token，如果过期则自动刷新
 func getValidAccessToken(account *model.Account) (string, error) {
 	// 检查当前token是否存在

@@ -249,3 +249,94 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}()
 	}
 }
+
+// TestHandleClaudeConsoleRequest 测试处理Claude Console请求的函数
+func TestHandleClaudeConsoleRequest(account *model.Account) (int, string) {
+	requestBody := `{
+		"model": "claude-sonnet-4-20250514",
+		"messages": [
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					}
+				]
+			}
+		],
+		"temperature": 1,
+		"system": [
+			{
+				"type": "text",
+				"text": "You are Claude Code, Anthropic's official CLI for Claude.",
+				"cache_control": {
+					"type": "ephemeral"
+				}
+			}
+		],
+		"metadata": {
+			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
+		},
+		"max_tokens": 64000,
+		"stream": true
+	}`
+
+	body, _ := sjson.SetBytes([]byte(requestBody), "stream", true)
+
+	req, err := http.NewRequest("POST", account.RequestURL+"/v1/messages?beta=true", bytes.NewBuffer(body))
+	if err != nil {
+		return http.StatusInternalServerError, "Failed to create request: " + err.Error()
+	}
+
+	fixedHeaders := map[string]string{
+		"x-api-key":                   account.SecretKey,
+		"anthropic-version":           "2023-06-01",
+		"Content-Type":                "application/json",
+		"Accept":                      "text/event-stream",
+		"Authorization":               "Bearer " + account.SecretKey, // 一些环境可能会检查这个头
+		"X-Stainless-Retry-Count":     "0",
+		"X-Stainless-Timeout":         "600",
+		"X-Stainless-Lang":            "js",
+		"X-Stainless-Package-Version": "0.55.1",
+		"X-Stainless-OS":              "MacOS",
+		"X-Stainless-Arch":            "arm64",
+		"X-Stainless-Runtime":         "node",
+		"x-stainless-helper-method":   "stream",
+		"x-app":                       "cli",
+		"User-Agent":                  "claude-cli/1.0.44 (external, cli)",
+		"anthropic-beta":              "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
+		"X-Stainless-Runtime-Version": "v20.18.1",
+		"anthropic-dangerous-direct-browser-access": "true",
+	}
+
+	for name, value := range fixedHeaders {
+		req.Header.Set(name, value)
+	}
+
+	httpClientTimeout := 60 * time.Second
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	if account.ProxyURI != "" {
+		proxyURL, err := url.Parse(account.ProxyURI)
+		if err != nil {
+			return http.StatusInternalServerError, "Invalid proxy URI: " + err.Error()
+		}
+		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+
+	client := &http.Client{
+		Timeout:   httpClientTimeout,
+		Transport: transport,
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return http.StatusInternalServerError, "Request failed: " + err.Error()
+	}
+	defer common.CloseIO(resp.Body)
+
+	return resp.StatusCode, ""
+}
