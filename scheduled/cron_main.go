@@ -43,8 +43,8 @@ func (s *CronService) Start() {
 		return
 	}
 
-	// 每10分钟执行一次账号异常恢复测试
-	_, err = s.cron.AddFunc("0 */10 * * * *", s.recoverAbnormalAccounts)
+	// 每30分钟执行一次账号异常恢复测试
+	_, err = s.cron.AddFunc("0 */30 * * * *", s.recoverAbnormalAccounts)
 	if err != nil {
 		log.Printf("Failed to add account recovery cron job: %v", err)
 		return
