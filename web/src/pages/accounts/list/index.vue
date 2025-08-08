@@ -53,6 +53,11 @@
           <t-tag v-else theme="default" variant="light"> 普通 </t-tag>
         </template>
 
+        <template #enable_proxy="{ row }">
+          <t-tag v-if="row.enable_proxy" theme="success" variant="light"> 是 </t-tag>
+          <t-tag v-else theme="default" variant="light"> 否 </t-tag>
+        </template>
+
         <template #priority="{ row }">
           <t-tag theme="primary" variant="light"> {{ row.priority }} </t-tag>
         </template>
@@ -72,12 +77,17 @@
         <template #current_status="{ row }">
           <t-tag v-if="row.current_status === 1" theme="success" variant="light"> 正常 </t-tag>
           <t-tag v-else-if="row.current_status === 2" theme="warning" variant="light"> 接口异常 </t-tag>
-          <t-tag v-else theme="danger" variant="light"> 账号异常/限流 </t-tag>
+          <t-tag v-else theme="danger" variant="light"> 限流中 </t-tag>
         </template>
 
         <template #active_status="{ row }">
           <t-tag v-if="row.active_status === 1" theme="success" variant="light"> 激活 </t-tag>
           <t-tag v-else theme="danger" variant="light"> 禁用 </t-tag>
+        </template>
+
+        <template #rate_limit_end_time="{ row }">
+          <span v-if="row.rate_limit_end_time">{{ formatDateTime(row.rate_limit_end_time) }}</span>
+          <span v-else class="text-placeholder">未限流</span>
         </template>
 
         <template #last_used_time="{ row }">
@@ -123,8 +133,8 @@
               <t-select v-model="formData.platform_type" placeholder="选择平台类型">
                 <t-option value="claude" label="Claude" />
                 <t-option value="claude_console" label="Claude Console" />
-                <t-option value="openai" label="OpenAI" />
-                <t-option value="gemini" label="Gemini" />
+                <t-option value="openai" label="OpenAI" disabled />
+                <t-option value="gemini" label="Gemini" disabled />
               </t-select>
             </t-form-item>
           </t-col>
@@ -342,6 +352,11 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 80,
   },
   {
+    title: '代理',
+    colKey: 'enable_proxy',
+    width: 80,
+  },
+  {
     title: '优先级',
     colKey: 'priority',
     width: 80,
@@ -370,6 +385,11 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     title: '激活状态',
     colKey: 'active_status',
     width: 100,
+  },
+  {
+    title: '限流结束时间',
+    colKey: 'rate_limit_end_time',
+    width: 160,
   },
   {
     title: '最后使用时间',
