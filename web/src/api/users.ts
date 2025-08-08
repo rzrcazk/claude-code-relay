@@ -1,15 +1,15 @@
 import { request } from '@/utils/request';
 
 const Api = {
-  GetList: '/v1/admin/users',
-  Create: '/v1/admin/users',
-  UpdateStatus: '/v1/admin/users/:id/status',
+  GetList: '/api/v1/admin/users',
+  Create: '/api/v1/admin/users',
+  UpdateStatus: '/api/v1/admin/users/:id/status',
 };
 
 // 用户状态枚举
 export const UserStatus = {
-  DISABLED: 0,  // 禁用
-  ENABLED: 1,   // 启用
+  DISABLED: 0, // 禁用
+  ENABLED: 1, // 启用
 } as const;
 
 // 用户状态标签

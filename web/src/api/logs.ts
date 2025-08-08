@@ -2,9 +2,9 @@ import { request } from '@/utils/request';
 
 // API路径定义
 const Api = {
-  GetMyLogs: '/v1/logs/my',
-  GetMyStats: '/v1/logs/stats/my',
-  GetLogDetail: '/v1/logs/detail',
+  GetMyLogs: '/api/v1/logs/my',
+  GetMyStats: '/api/v1/logs/stats/my',
+  GetLogDetail: '/api/v1/logs/detail',
 };
 
 // 日志记录类型

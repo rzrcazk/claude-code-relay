@@ -2,7 +2,7 @@ import type { MenuListResult } from '@/api/model/permissionModel';
 import { request } from '@/utils/request';
 
 const Api = {
-  MenuList: '/v1/menu-list',
+  MenuList: '/api/v1/menu-list',
 };
 
 export function getMenuList() {

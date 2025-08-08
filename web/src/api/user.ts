@@ -2,19 +2,19 @@ import { request } from '@/utils/request';
 
 const Api = {
   // 登录
-  Login: '/v1/auth/login',
-  Register: '/v1/auth/register',
-  SendVerificationCode: '/v1/auth/send-verification-code',
+  Login: '/api/v1/auth/login',
+  Register: '/api/v1/auth/register',
+  SendVerificationCode: '/api/v1/auth/send-verification-code',
 
   // 获取用户信息
-  GetProfile: '/v1/user/profile',
-  UpdateProfile: '/v1/user/profile',
-  ChangeEmail: '/v1/user/change-email',
+  GetProfile: '/api/v1/user/profile',
+  UpdateProfile: '/api/v1/user/profile',
+  ChangeEmail: '/api/v1/user/change-email',
 
   // 获取用户列表
-  GetUsers: '/v1/admin/users',
-  AdminCreateUser: '/v1/admin/users',
-  AdminUpdateUserStatus: '/v1/admin/users/{id}/status',
+  GetUsers: '/api/v1/admin/users',
+  AdminCreateUser: '/api/v1/admin/users',
+  AdminUpdateUserStatus: '/api/v1/admin/users/{id}/status',
 };
 
 // 用户信息
