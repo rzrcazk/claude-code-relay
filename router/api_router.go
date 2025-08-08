@@ -4,6 +4,7 @@ import (
 	"claude-code-relay/controller"
 	"claude-code-relay/middleware"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -127,7 +128,19 @@ func SetAPIRouter(server *gin.Engine) {
 		}
 	}
 
-	// 静态文件服务（为前端预留）
-	server.Static("/static", "./web/static")
-	server.StaticFile("/", "./web/index.html")
+	// 前端静态文件服务
+	server.Static("/assets", "./web/dist/assets")
+	server.Static("/static", "./web/dist/static")
+
+	// 前端路由处理 - 对于前端路由，返回 index.html
+	server.NoRoute(func(c *gin.Context) {
+		// 如果是 API 请求，返回404
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") || strings.HasPrefix(c.Request.URL.Path, "/health") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "API not found"})
+			return
+		}
+
+		// 对于前端路由，返回 index.html
+		c.File("./web/dist/index.html")
+	})
 }

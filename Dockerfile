@@ -1,4 +1,22 @@
-FROM golang:1.21-alpine AS builder
+# 前端构建阶段
+FROM node:18.18-alpine AS frontend-builder
+
+WORKDIR /app/web
+
+# 复制前端项目文件
+COPY web/package.json web/package-lock.json* ./
+
+# 安装依赖
+RUN npm ci --only=production --silent
+
+# 复制前端源码
+COPY web/ ./
+
+# 构建前端项目
+RUN npm run build
+
+# 后端构建阶段
+FROM golang:1.21-alpine AS backend-builder
 
 WORKDIR /app
 
@@ -9,6 +27,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o claude-code-relay main.go
 
+# 最终运行阶段
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates tzdata wget
@@ -19,7 +38,11 @@ WORKDIR /app
 
 RUN mkdir -p /app/logs
 
-COPY --from=builder /app/claude-code-relay .
+# 复制后端可执行文件
+COPY --from=backend-builder /app/claude-code-relay .
+
+# 复制前端构建产物
+COPY --from=frontend-builder /app/web/dist ./web/dist
 
 COPY .env.example .env.example
 
