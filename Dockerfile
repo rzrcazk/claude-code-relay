@@ -10,7 +10,7 @@ RUN npm install -g pnpm
 COPY web/package.json ./
 
 # 安装依赖（跳过prepare脚本避免husky问题）
-RUN pnpm install --prod --ignore-scripts
+RUN pnpm install --ignore-scripts
 
 # 复制前端源码
 COPY web/ ./
