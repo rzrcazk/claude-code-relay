@@ -111,7 +111,7 @@
       @confirm="handleFormConfirm"
       @cancel="handleFormCancel"
     >
-      <t-form ref="formRef" :model="formData" :rules="formRules" label-align="top" label-width="120px">
+      <t-form ref="formRef" :model="formData" label-align="top" label-width="120px">
         <t-row :gutter="16">
           <t-col :span="6">
             <t-form-item label="账号名称" name="name">
@@ -284,7 +284,7 @@
 </template>
 <script setup lang="ts">
 import { SearchIcon } from 'tdesign-icons-vue-next';
-import type { FormInstanceFunctions, FormRules, PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
+import type { FormInstanceFunctions, PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 
@@ -329,12 +329,12 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
   {
     title: '平台类型',
     colKey: 'platform_type',
-    width: 120,
+    width: 160,
   },
   {
     title: '分组',
     colKey: 'group',
-    width: 120,
+    width: 180,
   },
   {
     title: '类型',
@@ -429,13 +429,6 @@ const formData = reactive<AccountCreateParams & AccountUpdateParams>({
   access_token: '',
   refresh_token: '',
   today_usage_count: 0,
-});
-
-const formRules = reactive<FormRules<AccountCreateParams & AccountUpdateParams>>({
-  name: [{ required: true, message: '请输入账号名称', trigger: 'blur', type: 'error' }],
-  platform_type: [{ required: true, message: '请选择平台类型', trigger: 'change', type: 'error' }],
-  weight: [{ required: true, message: '请输入权重', trigger: 'blur', type: 'error' }],
-  priority: [{ required: true, message: '请输入优先级', trigger: 'blur', type: 'error' }],
 });
 
 // 删除相关
