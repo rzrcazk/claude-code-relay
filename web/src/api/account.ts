@@ -9,6 +9,7 @@ const Api = {
   GetDetail: '/api/v1/accounts/detail',
   UpdateActiveStatus: '/api/v1/accounts/update-active-status',
   UpdateCurrentStatus: '/api/v1/accounts/update-current-status',
+  TestAccount: '/api/v1/accounts/test',
   // Claude OAuth 相关
   GetOAuthURL: '/api/v1/oauth/generate-auth-url',
   ExchangeCode: '/api/v1/oauth/exchange-code',
@@ -113,6 +114,14 @@ export interface UpdateAccountActiveStatusParams {
 // 更新当前状态参数
 export interface UpdateAccountCurrentStatusParams {
   current_status: number;
+}
+
+// 测试账号响应
+export interface TestAccountResponse {
+  success: boolean;
+  message: string;
+  status_code: number;
+  platform_type: string;
 }
 
 // Claude OAuth 相关接口类型
@@ -241,6 +250,13 @@ export function batchUpdateAccountCurrentStatus(ids: number[], current_status: n
   return request.put({
     url: Api.UpdateCurrentStatus,
     data: { ids, current_status },
+  });
+}
+
+// 测试账号
+export function testAccount(id: number) {
+  return request.post<TestAccountResponse>({
+    url: `${Api.TestAccount}/${id}`,
   });
 }
 

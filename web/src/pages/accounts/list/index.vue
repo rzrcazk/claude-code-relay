@@ -104,6 +104,7 @@
 
         <template #op="{ row }">
           <t-space size="2px">
+            <t-button variant="text" size="small" theme="warning" @click="handleTest(row)"> 测试 </t-button>
             <t-button variant="text" size="small" theme="primary" @click="handleEdit(row)"> 编辑 </t-button>
             <t-button
               variant="text"
@@ -314,6 +315,7 @@ import {
   exchangeCode,
   getAccountList,
   getOAuthURL,
+  testAccount,
   updateAccount,
   updateAccountActiveStatus,
   updateAccountCurrentStatus,
@@ -414,7 +416,7 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     title: '操作',
     align: 'center',
     fixed: 'right',
-    width: 160,
+    width: 200,
     colKey: 'op',
   },
 ];
@@ -563,6 +565,21 @@ const handlePageChange = (pageInfo: any) => {
 
 const handleSelectChange = (value: (string | number)[]) => {
   selectedRowKeys.value = value;
+};
+
+// 测试账号
+const handleTest = async (row: Account) => {
+  try {
+    const res = await testAccount(row.id);
+    if (res.success) {
+      MessagePlugin.success(res.message);
+    } else {
+      MessagePlugin.error(res.message);
+    }
+  } catch (error) {
+    console.error('测试账号失败:', error);
+    MessagePlugin.error('测试账号失败');
+  }
 };
 
 // 操作相关方法
