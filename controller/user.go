@@ -51,7 +51,7 @@ type AdminCreateUserRequest struct {
 }
 
 type AdminUpdateUserStatusRequest struct {
-	Status int `json:"status" binding:"required"`
+	Status *int `json:"status" binding:"required"`
 }
 
 // Login 用户登录（支持密码和验证码两种方式）
@@ -425,7 +425,7 @@ func AdminUpdateUserStatus(c *gin.Context) {
 	}
 
 	userService := service.NewUserService()
-	err = userService.AdminUpdateUserStatus(uint(userID), req.Status)
+	err = userService.AdminUpdateUserStatus(uint(userID), *req.Status)
 	if err != nil {
 		var statusCode int
 		var code int
