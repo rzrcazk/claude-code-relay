@@ -53,37 +53,9 @@ const transform: AxiosTransform = {
     }
 
     // 根据后端错误码返回相应错误信息
-    let errorMessage = data.message || data.error || '请求失败';
-
-    switch (code) {
-      case 40000:
-        errorMessage = data.error || '请求参数错误';
-        break;
-      case 40001:
-        errorMessage = data.error || '认证失败，请重新登录';
-        break;
-      case 40002:
-        errorMessage = data.error || '账户状态异常';
-        break;
-      case 40003:
-        errorMessage = data.error || '权限不足';
-        break;
-      case 40004:
-        errorMessage = data.error || '权限不足';
-        break;
-      case 40005:
-        errorMessage = data.error || '资源不存在';
-        break;
-      case 42901:
-        errorMessage = data.error || '请求过于频繁，请稍后再试';
-        break;
-      case 50000:
-        errorMessage = data.error || '服务器内部错误';
-        break;
-      default:
-        errorMessage = data.error || data.message || `请求失败，错误码: ${code}`;
-    }
-
+    // eslint-disable-next-line ts/ban-ts-comment
+    // @ts-ignore
+    const errorMessage = data?.message || data?.error || '请求失败';
     throw new Error(errorMessage);
   },
 
@@ -174,7 +146,8 @@ const transform: AxiosTransform = {
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
-      return Promise.reject(error);
+      const errorMessage = response.data?.error || error || '请求失败';
+      return Promise.reject(errorMessage);
     }
 
     if (!config || !config.requestOptions.retry) return Promise.reject(error);
