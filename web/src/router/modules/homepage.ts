@@ -23,23 +23,6 @@ export default [
           title: '概览仪表盘',
         },
       },
-      {
-        path: 'dashboard',
-        name: 'Dashboard',
-        meta: {
-          title: '报表',
-        },
-        children: [
-          {
-            path: 'detail',
-            name: 'Detail',
-            component: () => import('@/pages/dashboard/detail/index.vue'),
-            meta: {
-              title: '统计报表',
-            },
-          },
-        ],
-      },
     ],
   },
 ];

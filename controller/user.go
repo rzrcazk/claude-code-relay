@@ -489,6 +489,26 @@ func buildMenuByRole(role string) []MenuItem {
 	// 基础菜单（所有用户都有）
 	baseMenus := []MenuItem{
 		{
+			Path:      "/group",
+			Name:      "groups",
+			Component: "LAYOUT",
+			Redirect:  "/groups/list",
+			Meta: MenuMeta{
+				Title: "分组管理",
+				Icon:  "usergroup",
+			},
+			Children: []MenuItem{
+				{
+					Path:      "list",
+					Name:      "GroupsList",
+					Component: "/groups/list/index",
+					Meta: MenuMeta{
+						Title: "分组列表",
+					},
+				},
+			},
+		},
+		{
 			Path:      "/accounts",
 			Name:      "accounts",
 			Component: "LAYOUT",
