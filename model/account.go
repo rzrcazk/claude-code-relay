@@ -10,9 +10,9 @@ type Account struct {
 	Name                          string         `json:"name" gorm:"type:varchar(100);not null;comment:账号名称"`
 	PlatformType                  string         `json:"platform_type" gorm:"type:varchar(50);not null;comment:平台类型(claude/claude_console)"`
 	RequestURL                    string         `json:"request_url" gorm:"type:varchar(500);comment:请求地址"`
-	SecretKey                     string         `json:"-" gorm:"type:text;comment:请求秘钥"`
-	AccessToken                   string         `json:"-" gorm:"type:text;comment:claude的官方token"`
-	RefreshToken                  string         `json:"-" gorm:"type:text;comment:claude的官方刷新token"`
+	SecretKey                     string         `json:"secret_key" gorm:"type:text;comment:请求秘钥"`
+	AccessToken                   string         `json:"access_token" gorm:"type:text;comment:claude的官方token"`
+	RefreshToken                  string         `json:"refresh_token" gorm:"type:text;comment:claude的官方刷新token"`
 	ExpiresAt                     int            `json:"expires_at" gorm:"default:0;comment:token过期时间戳"`
 	IsMax                         bool           `json:"is_max" gorm:"default:false;comment:是否是max账号"`
 	GroupID                       int            `json:"group_id" gorm:"default:0;comment:分组ID"`

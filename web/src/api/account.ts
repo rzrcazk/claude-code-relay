@@ -9,6 +9,9 @@ const Api = {
   GetDetail: '/v1/accounts/detail',
   UpdateActiveStatus: '/v1/accounts/update-active-status',
   UpdateCurrentStatus: '/v1/accounts/update-current-status',
+  // Claude OAuth 相关
+  GetOAuthURL: '/v1/oauth/generate-auth-url',
+  ExchangeCode: '/v1/oauth/exchange-code',
 };
 
 // 账号信息
@@ -17,6 +20,9 @@ export interface Account {
   name: string;
   platform_type: string; // claude/claude_console/openai/gemini
   request_url: string;
+  secret_key: string; // 现在会返回密钥
+  access_token: string; // 现在会返回访问令牌
+  refresh_token: string; // 现在会返回刷新令牌
   expires_at: number;
   is_max: boolean;
   group_id: number;
@@ -107,6 +113,37 @@ export interface UpdateAccountActiveStatusParams {
 // 更新当前状态参数
 export interface UpdateAccountCurrentStatusParams {
   current_status: number;
+}
+
+// Claude OAuth 相关接口类型
+
+// OAuth授权URL响应
+export interface OAuthURLResponse {
+  auth_url: string;
+  state: string;
+  code_challenge: string;
+  code_verifier: string;
+}
+
+// OAuth授权码验证参数
+export interface ExchangeCodeParams {
+  authorization_code: string;
+  callback_url: string;
+  proxy_uri: string;
+  code_verifier: string;
+  state: string;
+}
+
+// OAuth授权码验证响应
+export interface ExchangeCodeResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  user_info: {
+    id: string;
+    email: string;
+    name: string;
+  };
 }
 
 /**
@@ -204,5 +241,26 @@ export function batchUpdateAccountCurrentStatus(ids: number[], current_status: n
   return request.put({
     url: Api.UpdateCurrentStatus,
     data: { ids, current_status },
+  });
+}
+
+// === Claude OAuth 相关接口 ===
+
+/**
+ * 获取Claude OAuth授权URL
+ */
+export function getOAuthURL() {
+  return request.get<OAuthURLResponse>({
+    url: Api.GetOAuthURL,
+  });
+}
+
+/**
+ * 验证OAuth授权码并获取token
+ */
+export function exchangeCode(data: ExchangeCodeParams) {
+  return request.post<ExchangeCodeResponse>({
+    url: Api.ExchangeCode,
+    data,
   });
 }

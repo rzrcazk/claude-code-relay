@@ -44,6 +44,7 @@
           <t-tag v-if="row.group" theme="primary" variant="light">
             {{ row.group.name }}
           </t-tag>
+          <t-tag v-else-if="row.group_id === 0" theme="success" variant="light"> 全局共享组 </t-tag>
           <span v-else class="text-placeholder">未分组</span>
         </template>
 
@@ -129,7 +130,8 @@
           </t-col>
         </t-row>
 
-        <t-row :gutter="16">
+        <!-- 非Claude平台才显示请求地址和密钥 -->
+        <t-row v-if="formData.platform_type !== 'claude'" :gutter="16">
           <t-col :span="6">
             <t-form-item label="请求地址" name="request_url">
               <t-input v-model="formData.request_url" placeholder="请输入API请求地址" />
@@ -152,6 +154,7 @@
                 :loading="groupsLoading"
                 clearable
               >
+                <t-option :value="0" label="全局共享组" />
                 <t-option v-for="group in groups" :key="group.id" :value="group.id" :label="group.name" />
               </t-select>
             </t-form-item>
@@ -202,13 +205,69 @@
           </t-col>
         </t-row>
 
-        <t-form-item v-if="formData.platform_type === 'claude_console'" label="访问令牌" name="access_token">
-          <t-textarea v-model="formData.access_token" placeholder="请输入访问令牌" :rows="3" />
-        </t-form-item>
+        <!-- Claude 平台令牌配置 -->
+        <template v-if="formData.platform_type === 'claude'">
+          <!-- Claude平台显示授权方式选择 -->
+          <t-form-item label="授权方式" name="auth_method">
+            <t-radio-group v-model="authMethod">
+              <t-radio value="manual">手动输入令牌</t-radio>
+              <t-radio value="oauth">OAuth授权</t-radio>
+            </t-radio-group>
+          </t-form-item>
 
-        <t-form-item v-if="formData.platform_type === 'claude_console'" label="刷新令牌" name="refresh_token">
-          <t-textarea v-model="formData.refresh_token" placeholder="请输入刷新令牌" :rows="3" />
-        </t-form-item>
+          <!-- 手动输入令牌模式 -->
+          <template v-if="authMethod === 'manual'">
+            <t-form-item label="访问令牌" name="access_token">
+              <t-textarea v-model="formData.access_token" placeholder="请输入Claude访问令牌" :rows="3" />
+            </t-form-item>
+
+            <t-form-item label="刷新令牌" name="refresh_token">
+              <t-textarea v-model="formData.refresh_token" placeholder="请输入Claude刷新令牌" :rows="3" />
+            </t-form-item>
+          </template>
+
+          <!-- OAuth授权模式 -->
+          <template v-if="authMethod === 'oauth'">
+            <t-form-item label="OAuth授权">
+              <t-space direction="vertical" style="width: 100%">
+                <t-button theme="primary" :loading="oauthLoading" @click="handleGetOAuthURL">
+                  {{ oauthURL ? '重新获取授权链接' : '获取授权链接' }}
+                </t-button>
+
+                <div v-if="oauthURL" class="oauth-url-container">
+                  <t-alert theme="info" message="请复制以下链接到浏览器中进行授权：">
+                    <template #operation>
+                      <t-button size="small" variant="text" @click="openOAuthURL(oauthURL)"> 新窗口打开链接 </t-button>
+                    </template>
+                  </t-alert>
+                  <t-textarea :value="oauthURL" readonly :rows="3" style="margin-top: 8px" />
+                </div>
+
+                <t-input v-model="authCode" placeholder="请输入授权完成后获得的授权码" :disabled="!oauthURL" />
+
+                <t-button
+                  theme="success"
+                  :disabled="!authCode || !oauthURL"
+                  :loading="exchangeLoading"
+                  @click="handleExchangeCode"
+                >
+                  验证授权码并获取令牌
+                </t-button>
+              </t-space>
+            </t-form-item>
+
+            <!-- OAuth获取的令牌显示（只读） -->
+            <template v-if="formData.access_token || formData.refresh_token">
+              <t-form-item :label="editingItem ? '访问令牌（当前已有）' : '访问令牌（已自动获取）'">
+                <t-textarea v-model="formData.access_token" readonly :rows="2" />
+              </t-form-item>
+
+              <t-form-item :label="editingItem ? '刷新令牌（当前已有）' : '刷新令牌（已自动获取）'">
+                <t-textarea v-model="formData.refresh_token" readonly :rows="2" />
+              </t-form-item>
+            </template>
+          </template>
+        </template>
       </t-form>
     </t-dialog>
 
@@ -229,13 +288,15 @@ import type { FormInstanceFunctions, FormRules, PrimaryTableCol, TableRowData } 
 import { MessagePlugin } from 'tdesign-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import type { Account, AccountCreateParams, AccountUpdateParams } from '@/api/account';
+import type { Account, AccountCreateParams, AccountUpdateParams, OAuthURLResponse } from '@/api/account';
 import {
   batchDeleteAccounts,
   batchUpdateAccountActiveStatus,
   createAccount,
   deleteAccount,
+  exchangeCode,
   getAccountList,
+  getOAuthURL,
   updateAccount,
   updateAccountActiveStatus,
 } from '@/api/account';
@@ -358,7 +419,7 @@ const formData = reactive<AccountCreateParams & AccountUpdateParams>({
   platform_type: 'claude',
   request_url: '',
   secret_key: '',
-  group_id: undefined,
+  group_id: 0,
   priority: 100,
   weight: 100,
   enable_proxy: false,
@@ -381,6 +442,15 @@ const formRules = reactive<FormRules<AccountCreateParams & AccountUpdateParams>>
 const deleteVisible = ref(false);
 const deleteItems = ref<Account[]>([]);
 
+// OAuth相关
+const authMethod = ref('manual'); // 'manual' | 'oauth'
+const oauthURL = ref('');
+const oauthState = ref('');
+const authCode = ref('');
+const oauthLoading = ref(false);
+const exchangeLoading = ref(false);
+const generateAuthInfo = ref<OAuthURLResponse | null>(null);
+
 // 计算属性
 const headerAffixedTop = computed(
   () =>
@@ -400,8 +470,8 @@ const deleteConfirmText = computed(() => {
 });
 
 // 工具方法
-const getPlatformTypeTheme = (type: string) => {
-  const themeMap: Record<string, string> = {
+const getPlatformTypeTheme = (type: string): 'primary' | 'success' | 'warning' | 'danger' | 'default' => {
+  const themeMap: Record<string, 'primary' | 'success' | 'warning' | 'danger' | 'default'> = {
     claude: 'primary',
     claude_console: 'success',
     openai: 'warning',
@@ -482,7 +552,7 @@ const handleCreate = () => {
     platform_type: 'claude',
     request_url: '',
     secret_key: '',
-    group_id: undefined,
+    group_id: 0,
     priority: 100,
     weight: 100,
     enable_proxy: false,
@@ -493,6 +563,13 @@ const handleCreate = () => {
     refresh_token: '',
     today_usage_count: 0,
   });
+
+  // 重置OAuth相关状态
+  authMethod.value = 'manual';
+  oauthURL.value = '';
+  oauthState.value = '';
+  authCode.value = '';
+
   formVisible.value = true;
 };
 
@@ -502,18 +579,33 @@ const handleEdit = (item: Account) => {
     name: item.name,
     platform_type: item.platform_type,
     request_url: item.request_url || '',
-    secret_key: '', // 不显示密钥
-    group_id: item.group_id || undefined,
+    secret_key: item.secret_key || '', // 现在回填密钥
+    group_id: item.group_id || 0,
     priority: item.priority,
     weight: item.weight,
     enable_proxy: item.enable_proxy,
     proxy_uri: item.proxy_uri || '',
     active_status: item.active_status,
     is_max: item.is_max,
-    access_token: '', // 不显示token
-    refresh_token: '', // 不显示token
+    access_token: item.access_token || '', // 现在回填访问令牌
+    refresh_token: item.refresh_token || '', // 现在回填刷新令牌
     today_usage_count: item.today_usage_count,
   });
+
+  // 根据是否有令牌数据智能设置授权方式
+  if (item.access_token && item.refresh_token && item.platform_type === 'claude') {
+    // 如果是Claude平台且有令牌，默认选择OAuth模式以显示现有令牌
+    authMethod.value = 'oauth';
+  } else {
+    // 否则默认手动模式
+    authMethod.value = 'manual';
+  }
+
+  // 重置OAuth相关状态
+  oauthURL.value = '';
+  oauthState.value = '';
+  authCode.value = '';
+
   formVisible.value = true;
 };
 
@@ -589,7 +681,7 @@ const handleToggleActiveStatus = async (item: Account) => {
   }
 };
 
-const handleBatchUpdateStatus = async (status: number) => {
+const _handleBatchUpdateStatus = async (status: number) => {
   const selectedItems = data.value.filter((item) => selectedRowKeys.value.includes(item.id));
   if (selectedItems.length === 0) {
     MessagePlugin.warning('请先选择要操作的账号');
@@ -613,7 +705,7 @@ const handleDelete = (items: Account[]) => {
   deleteVisible.value = true;
 };
 
-const handleBatchDelete = () => {
+const _handleBatchDelete = () => {
   const selectedItems = data.value.filter((item) => selectedRowKeys.value.includes(item.id));
   if (selectedItems.length === 0) {
     MessagePlugin.warning('请先选择要删除的账号');
@@ -643,6 +735,70 @@ const handleDeleteConfirm = async () => {
 
 const handleDeleteCancel = () => {
   deleteVisible.value = false;
+};
+
+// OAuth相关方法
+const handleGetOAuthURL = async () => {
+  oauthLoading.value = true;
+  try {
+    const result = await getOAuthURL();
+    oauthURL.value = result.auth_url;
+    oauthState.value = result.state;
+    authCode.value = ''; // 清空授权码
+    // 保存本次返回数据, 用于后续验证授权码
+    generateAuthInfo.value = result;
+    MessagePlugin.success('授权链接获取成功');
+  } catch (error) {
+    console.error('获取授权链接失败:', error);
+    MessagePlugin.error('获取授权链接失败');
+  } finally {
+    oauthLoading.value = false;
+  }
+};
+
+const handleExchangeCode = async () => {
+  if (!authCode.value || !oauthState.value) {
+    MessagePlugin.warning('请输入授权码');
+    return;
+  }
+
+  exchangeLoading.value = true;
+  try {
+    const result = await exchangeCode({
+      authorization_code: authCode.value,
+      callback_url: generateAuthInfo.value?.auth_url || '',
+      proxy_uri: formData.proxy_uri,
+      code_verifier: generateAuthInfo.value?.code_verifier || '',
+      state: generateAuthInfo?.value.state,
+    });
+
+    // 自动回填令牌
+    formData.access_token = result.access_token;
+    formData.refresh_token = result.refresh_token;
+
+    MessagePlugin.success('授权成功，令牌已自动填入');
+
+    // 清空OAuth相关数据
+    authCode.value = '';
+    oauthURL.value = '';
+    oauthState.value = '';
+    generateAuthInfo.value = null;
+  } catch (error) {
+    console.error('授权码验证失败:', error);
+    MessagePlugin.error('授权码验证失败');
+  } finally {
+    exchangeLoading.value = false;
+  }
+};
+
+// 打开授权链接
+const openOAuthURL = async (url: string) => {
+  try {
+    window.open(url, '_blank');
+  } catch (error) {
+    console.error('打开链接失败:', error);
+    MessagePlugin.error('打开链接失败');
+  }
 };
 
 // 生命周期
@@ -679,5 +835,14 @@ onMounted(async () => {
 
 .text-placeholder {
   color: var(--td-text-color-placeholder);
+}
+
+.oauth-url-container {
+  width: 100%;
+
+  .t-textarea {
+    font-family: monospace;
+    font-size: 12px;
+  }
 }
 </style>
