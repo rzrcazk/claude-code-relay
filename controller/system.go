@@ -3,7 +3,7 @@ package controller
 import (
 	"claude-code-relay/constant"
 	"claude-code-relay/model"
-	"claude-code-relay/service"
+	"claude-code-relay/scheduled"
 	"net/http"
 	"strconv"
 
@@ -75,7 +75,7 @@ func GetDashboard(c *gin.Context) {
 
 // ManualResetStats 手动重置统计数据（测试用）
 func ManualResetStats(c *gin.Context) {
-	if service.GlobalCronService == nil {
+	if scheduled.GlobalCronService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "定时任务服务未初始化",
 			"code":  constant.InternalServerError,
@@ -83,7 +83,7 @@ func ManualResetStats(c *gin.Context) {
 		return
 	}
 
-	err := service.GlobalCronService.ManualResetStats()
+	err := scheduled.GlobalCronService.ManualResetStats()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "重置统计数据失败: " + err.Error(),
@@ -100,7 +100,7 @@ func ManualResetStats(c *gin.Context) {
 
 // ManualCleanLogs 手动清理过期日志（测试用）
 func ManualCleanLogs(c *gin.Context) {
-	if service.GlobalCronService == nil {
+	if scheduled.GlobalCronService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "定时任务服务未初始化",
 			"code":  constant.InternalServerError,
@@ -108,7 +108,7 @@ func ManualCleanLogs(c *gin.Context) {
 		return
 	}
 
-	deletedCount, err := service.GlobalCronService.ManualCleanExpiredLogs()
+	deletedCount, err := scheduled.GlobalCronService.ManualCleanExpiredLogs()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "清理日志失败: " + err.Error(),

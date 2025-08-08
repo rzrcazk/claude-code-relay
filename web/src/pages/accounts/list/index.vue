@@ -355,9 +355,14 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 180,
   },
   {
-    title: '类型',
-    colKey: 'is_max',
-    width: 80,
+    title: '当前状态',
+    colKey: 'current_status',
+    width: 120,
+  },
+  {
+    title: '激活状态',
+    colKey: 'active_status',
+    width: 100,
   },
   {
     title: '代理',
@@ -375,6 +380,11 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 80,
   },
   {
+    title: '类型',
+    colKey: 'is_max',
+    width: 80,
+  },
+  {
     title: '今日使用',
     colKey: 'today_usage_count',
     width: 100,
@@ -382,16 +392,6 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
   {
     title: '今日费用',
     colKey: 'today_total_cost',
-    width: 100,
-  },
-  {
-    title: '当前状态',
-    colKey: 'current_status',
-    width: 120,
-  },
-  {
-    title: '激活状态',
-    colKey: 'active_status',
     width: 100,
   },
   {
