@@ -94,12 +94,12 @@ type UpdateAccountRequest struct {
 
 // 账号激活状态更新请求参数
 type UpdateAccountActiveStatusRequest struct {
-	ActiveStatus int `json:"active_status" binding:"required,oneof=1 2"`
+	ActiveStatus *int `json:"active_status" binding:"required"`
 }
 
 // 账号当前状态更新请求参数
 type UpdateAccountCurrentStatusRequest struct {
-	CurrentStatus int `json:"current_status" binding:"required,oneof=1 2"`
+	CurrentStatus *int `json:"current_status" binding:"required"`
 }
 
 func (a *Account) TableName() string {

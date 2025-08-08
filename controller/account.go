@@ -279,6 +279,15 @@ func UpdateAccountActiveStatus(c *gin.Context) {
 		return
 	}
 
+	// 验证active_status值范围
+	if req.ActiveStatus == nil || (*req.ActiveStatus != 1 && *req.ActiveStatus != 2) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "active_status参数必须为1或2",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
 	user := c.MustGet("user").(*model.User)
 	var userID *uint
 
@@ -288,7 +297,7 @@ func UpdateAccountActiveStatus(c *gin.Context) {
 	}
 
 	accountService := service.NewAccountService()
-	err = accountService.UpdateAccountActiveStatus(uint(id), req.ActiveStatus, userID)
+	err = accountService.UpdateAccountActiveStatus(uint(id), *req.ActiveStatus, userID)
 	if err != nil {
 		var statusCode int
 		var code int
@@ -336,6 +345,15 @@ func UpdateAccountCurrentStatus(c *gin.Context) {
 		return
 	}
 
+	// 验证current_status值范围
+	if req.CurrentStatus == nil || (*req.CurrentStatus != 1 && *req.CurrentStatus != 2) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "current_status参数必须为1或2",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
 	user := c.MustGet("user").(*model.User)
 	var userID *uint
 
@@ -345,7 +363,7 @@ func UpdateAccountCurrentStatus(c *gin.Context) {
 	}
 
 	accountService := service.NewAccountService()
-	err = accountService.UpdateAccountCurrentStatus(uint(id), req.CurrentStatus, userID)
+	err = accountService.UpdateAccountCurrentStatus(uint(id), *req.CurrentStatus, userID)
 	if err != nil {
 		var statusCode int
 		var code int
