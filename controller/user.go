@@ -543,7 +543,7 @@ func buildMenuByRole(role string) []MenuItem {
 					Name:      "MyLogs",
 					Component: "/logs/my/index",
 					Meta: MenuMeta{
-						Title: "我的记录",
+						Title: "我的日志",
 					},
 				},
 				{
