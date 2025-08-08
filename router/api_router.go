@@ -11,10 +11,6 @@ import (
 )
 
 func SetAPIRouter(server *gin.Engine) {
-
-	// 全局限流：每分钟300次请求
-	server.Use(middleware.RateLimit(300, time.Minute))
-
 	// 健康检查
 	server.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -25,6 +21,7 @@ func SetAPIRouter(server *gin.Engine) {
 
 	// API路由组
 	api := server.Group("/api/v1")
+	api.Use(middleware.RateLimit(120, time.Minute))
 	{
 		// 公开接口
 		auth := api.Group("/auth")
