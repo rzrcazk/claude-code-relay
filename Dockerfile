@@ -7,10 +7,10 @@ WORKDIR /app/web
 RUN npm install -g pnpm
 
 # 复制前端项目文件
-COPY web/package.json web/pnpm-lock.yaml* ./
+COPY web/package.json ./
 
 # 安装依赖（跳过prepare脚本避免husky问题）
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm install --prod --ignore-scripts
 
 # 复制前端源码
 COPY web/ ./
