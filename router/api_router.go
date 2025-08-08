@@ -115,6 +115,10 @@ func SetAPIRouter(server *gin.Engine) {
 					adminLogs.DELETE("/delete/:id", controller.DeleteLogById)  // 删除指定日志
 					adminLogs.DELETE("/cleanup", controller.DeleteExpiredLogs) // 删除过期日志
 				}
+
+				// 定时任务测试接口（管理员专用）
+				admin.POST("/test/reset-stats", controller.ManualResetStats) // 手动重置统计数据
+				admin.POST("/test/clean-logs", controller.ManualCleanLogs)   // 手动清理过期日志
 			}
 		}
 	}

@@ -80,7 +80,7 @@ func (s *CronService) resetDailyStats() {
 
 // resetAccountStats 重置账户今日统计数据
 func (s *CronService) resetAccountStats() error {
-	result := model.DB.Model(&model.Account{}).Updates(map[string]interface{}{
+	result := model.DB.Model(&model.Account{}).Where("1 = 1").Updates(map[string]interface{}{
 		"today_usage_count":                 0,
 		"today_input_tokens":                0,
 		"today_output_tokens":               0,
@@ -99,7 +99,7 @@ func (s *CronService) resetAccountStats() error {
 
 // resetApiKeyStats 重置API Key今日统计数据
 func (s *CronService) resetApiKeyStats() error {
-	result := model.DB.Model(&model.ApiKey{}).Updates(map[string]interface{}{
+	result := model.DB.Model(&model.ApiKey{}).Where("1 = 1").Updates(map[string]interface{}{
 		"today_usage_count":                 0,
 		"today_input_tokens":                0,
 		"today_output_tokens":               0,
