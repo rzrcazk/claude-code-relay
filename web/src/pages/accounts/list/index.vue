@@ -76,7 +76,14 @@
 
         <template #current_status="{ row }">
           <t-tag v-if="row.current_status === 1" theme="success" variant="light"> 正常 </t-tag>
-          <t-tag v-else-if="row.current_status === 2" theme="warning" variant="light"> 接口异常 </t-tag>
+          <t-popconfirm
+            v-else-if="row.current_status === 2"
+            content="确认启用此账号吗?"
+            @confirm="handlerUpdateAccountCurrentStatus(row)"
+          >
+            <t-tag theme="warning" variant="light" style="cursor: pointer"> 接口异常 </t-tag>
+          </t-popconfirm>
+
           <t-tag v-else theme="danger" variant="light"> 限流中 </t-tag>
         </template>
 
@@ -309,6 +316,7 @@ import {
   getOAuthURL,
   updateAccount,
   updateAccountActiveStatus,
+  updateAccountCurrentStatus,
 } from '@/api/account';
 import type { Group } from '@/api/group';
 import { getAllGroups } from '@/api/group';
@@ -710,6 +718,18 @@ const _handleBatchUpdateStatus = async (status: number) => {
   } catch (error) {
     console.error('批量状态更新失败:', error);
     MessagePlugin.error('批量状态更新失败');
+  }
+};
+
+// 消除账号接口异常状态
+const handlerUpdateAccountCurrentStatus = async (row: Account) => {
+  try {
+    await updateAccountCurrentStatus(row.id, 1);
+    MessagePlugin.success('操作成功');
+    await fetchData();
+  } catch (error) {
+    console.error('操作失败:', error);
+    MessagePlugin.error('操作失败');
   }
 };
 
