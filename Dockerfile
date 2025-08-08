@@ -3,17 +3,20 @@ FROM node:18.18-alpine AS frontend-builder
 
 WORKDIR /app/web
 
-# 复制前端项目文件
-COPY web/package.json web/package-lock.json* ./
+# 安装pnpm
+RUN npm install -g pnpm
 
-# 安装依赖
-RUN npm ci --only=production --silent
+# 复制前端项目文件
+COPY web/package.json web/pnpm-lock.yaml* ./
+
+# 安装依赖（跳过prepare脚本避免husky问题）
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # 复制前端源码
 COPY web/ ./
 
 # 构建前端项目
-RUN npm run build
+RUN pnpm run build
 
 # 后端构建阶段
 FROM golang:1.21-alpine AS backend-builder
