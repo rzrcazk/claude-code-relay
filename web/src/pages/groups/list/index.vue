@@ -1,8 +1,9 @@
 <template>
   <div>
-    <t-row>
-      <t-alert theme="info" message="温馨提示: 分组还可用于拼车场景, 每个 API KEY 只能调用相同分组下的账号资源!" />
-    </t-row>
+    <div class="tip-banner">
+      <t-icon name="lightbulb" />
+      <span class="tip-text">温馨提示：分组可用于拼车场景，每个 API KEY 只能调用相同分组下的账号资源</span>
+    </div>
 
     <t-card class="list-card-container" :bordered="false">
       <t-row justify="space-between">
@@ -398,5 +399,30 @@ onMounted(() => {
 
 .text-placeholder {
   color: var(--td-text-color-placeholder);
+}
+
+.tip-banner {
+  background: #f6f9ff;
+  border: 1px solid #d6e4ff;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .t-icon {
+    font-size: 16px;
+    color: #faad14;
+    flex-shrink: 0;
+  }
+  
+  .tip-text {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+    flex: 1;
+    margin: 0;
+  }
 }
 </style>

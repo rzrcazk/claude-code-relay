@@ -1,11 +1,16 @@
 <template>
   <div>
-    <t-row>
-      <t-alert
-        theme="info"
-        message="账号调度逻辑: 优先级越高, 权重越大, 今日使用次数越少, 则被调用的概率越大; 同分组下相同优先级的账号优先调用今日使用量最少的账号."
-      />
-    </t-row>
+    <div class="info-banner">
+      <div class="info-banner-icon">
+        <t-icon name="info-circle-filled" />
+      </div>
+      <div class="info-banner-content">
+        <div class="info-banner-title">账号调度逻辑</div>
+        <div class="info-banner-text">
+          优先级越高，权重越大，今日使用次数越少，则被调用的概率越大；同分组下相同优先级的账号优先调用今日使用量最少的账号
+        </div>
+      </div>
+    </div>
 
     <t-card class="list-card-container" :bordered="false">
       <t-row justify="space-between">
@@ -884,6 +889,59 @@ onMounted(async () => {
   .t-textarea {
     font-family: monospace;
     font-size: 12px;
+  }
+}
+
+.info-banner {
+  background: linear-gradient(135deg, #e6f3ff 0%, #f0f8ff 100%);
+  border: 1px solid #91caff;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #1890ff;
+  }
+
+  .info-banner-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    
+    .t-icon {
+      font-size: 18px;
+      color: #1890ff;
+    }
+  }
+
+  .info-banner-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .info-banner-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1890ff;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .info-banner-text {
+    font-size: 13px;
+    color: #595959;
+    line-height: 1.6;
+    margin: 0;
   }
 }
 </style>
