@@ -1,12 +1,12 @@
 import { request } from '@/utils/request';
 
 const Api = {
-  GetList: '/v1/api-keys/list',
-  Create: '/v1/api-keys/create',
-  GetDetail: '/v1/api-keys/detail',
-  Update: '/v1/api-keys/update',
-  UpdateStatus: '/v1/api-keys/update-status',
-  Delete: '/v1/api-keys/delete',
+  GetList: '/api/v1/api-keys/list',
+  Create: '/api/v1/api-keys/create',
+  GetDetail: '/api/v1/api-keys/detail',
+  Update: '/api/v1/api-keys/update',
+  UpdateStatus: '/api/v1/api-keys/update-status',
+  Delete: '/api/v1/api-keys/delete',
 };
 
 // API Key

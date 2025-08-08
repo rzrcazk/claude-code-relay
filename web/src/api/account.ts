@@ -2,16 +2,16 @@ import { request } from '@/utils/request';
 
 // API 账号接口
 const Api = {
-  GetList: '/v1/accounts/list',
-  Create: '/v1/accounts/create',
-  Update: '/v1/accounts/update',
-  Delete: '/v1/accounts/delete',
-  GetDetail: '/v1/accounts/detail',
-  UpdateActiveStatus: '/v1/accounts/update-active-status',
-  UpdateCurrentStatus: '/v1/accounts/update-current-status',
+  GetList: '/api/v1/accounts/list',
+  Create: '/api/v1/accounts/create',
+  Update: '/api/v1/accounts/update',
+  Delete: '/api/v1/accounts/delete',
+  GetDetail: '/api/v1/accounts/detail',
+  UpdateActiveStatus: '/api/v1/accounts/update-active-status',
+  UpdateCurrentStatus: '/api/v1/accounts/update-current-status',
   // Claude OAuth 相关
-  GetOAuthURL: '/v1/oauth/generate-auth-url',
-  ExchangeCode: '/v1/oauth/exchange-code',
+  GetOAuthURL: '/api/v1/oauth/generate-auth-url',
+  ExchangeCode: '/api/v1/oauth/exchange-code',
 };
 
 // 账号信息

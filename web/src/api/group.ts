@@ -2,12 +2,12 @@ import { request } from '@/utils/request';
 
 // API 分组接口
 const Api = {
-  GetList: '/v1/groups/list',
-  GetAll: '/v1/groups/all',
-  Create: '/v1/groups/create',
-  Update: '/v1/groups/update',
-  Delete: '/v1/groups/delete',
-  GetDetail: '/v1/groups/detail',
+  GetList: '/api/v1/groups/list',
+  GetAll: '/api/v1/groups/all',
+  Create: '/api/v1/groups/create',
+  Update: '/api/v1/groups/update',
+  Delete: '/api/v1/groups/delete',
+  GetDetail: '/api/v1/groups/detail',
 };
 
 // 分组列表
