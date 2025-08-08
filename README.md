@@ -50,7 +50,7 @@ web/
 ### 环境要求
 - Go 1.21+
 - Node.js 18.18.0+ (前端开发)
-- MySQL 8.0+ (推荐) 或 SQLite (默认)
+- MySQL 8.0+
 - Redis (可选，用于限流和缓存)
 
 ### 后端启动
@@ -157,9 +157,10 @@ MYSQL_PASSWORD=your-password
 MYSQL_DATABASE=claude_code_relay
 ```
 
-**SQLite（默认开发环境）**
-- 无需配置，数据存储在 `./data/data.db`
-- 自动创建数据库和表结构
+**MySQL数据库**
+- 必须配置MySQL相关环境变量
+- 支持高并发和大数据量
+- 提供更好的性能和可靠性
 
 ### Redis缓存（可选）
 ```bash
@@ -212,7 +213,7 @@ VITE_API_URL_PREFIX=/api/v1
 ### 技术栈
 **后端**: Go 1.21+, Gin, GORM, Redis(可选)
 **前端**: Vue 3.5+, TypeScript, TDesign, Vite 6+
-**数据库**: MySQL 8.0+(推荐) / SQLite(默认)
+**数据库**: MySQL 8.0+
 
 ## 💻 开发说明
 
