@@ -68,11 +68,20 @@
             style="width: 200px"
             @blur="handleSearch"
           />
-          <t-input-number
+          <t-input
+            v-model="searchFilters.account_id"
+            type="number"
+            placeholder="账号ID"
+            style="width: 180px"
+            clearable
+            @blur="handleSearch"
+          />
+          <t-input
             v-model="searchFilters.api_key_id"
+            type="number"
             placeholder="API Key ID"
-            :min="1"
-            style="width: 200px"
+            style="width: 180px"
+            clearable
             @blur="handleSearch"
           />
         </t-space>
