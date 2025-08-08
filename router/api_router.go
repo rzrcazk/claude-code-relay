@@ -48,6 +48,9 @@ func SetAPIRouter(server *gin.Engine) {
 				user.PUT("/change-email", controller.ChangeEmail)
 			}
 
+			// 菜单相关
+			authenticated.GET("/menu-list", controller.GetMenuList)
+
 			// 分组相关
 			group := authenticated.Group("/groups")
 			{

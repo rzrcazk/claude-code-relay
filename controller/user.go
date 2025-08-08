@@ -452,3 +452,154 @@ func AdminUpdateUserStatus(c *gin.Context) {
 		"code":    constant.Success,
 	})
 }
+
+// MenuItem 菜单项结构
+type MenuItem struct {
+	Path      string     `json:"path"`
+	Name      string     `json:"name"`
+	Component string     `json:"component"`
+	Redirect  string     `json:"redirect,omitempty"`
+	Meta      MenuMeta   `json:"meta"`
+	Children  []MenuItem `json:"children,omitempty"`
+}
+
+type MenuMeta struct {
+	Title string `json:"title"`
+	Icon  string `json:"icon,omitempty"`
+}
+
+// GetMenuList 获取用户菜单列表
+func GetMenuList(c *gin.Context) {
+	user := c.MustGet("user").(*model.User)
+
+	// 构建菜单列表
+	menus := buildMenuByRole(user.Role)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取成功",
+		"code":    constant.Success,
+		"data": gin.H{
+			"list": menus,
+		},
+	})
+}
+
+// buildMenuByRole 根据用户角色构建菜单
+func buildMenuByRole(role string) []MenuItem {
+	// 基础菜单（所有用户都有）
+	baseMenus := []MenuItem{
+		{
+			Path:      "/accounts",
+			Name:      "accounts",
+			Component: "LAYOUT",
+			Redirect:  "/accounts/list",
+			Meta: MenuMeta{
+				Title: "账号管理",
+				Icon:  "user-circle",
+			},
+			Children: []MenuItem{
+				{
+					Path:      "list",
+					Name:      "AccountsList",
+					Component: "/accounts/list/index",
+					Meta: MenuMeta{
+						Title: "账号列表",
+					},
+				},
+			},
+		},
+		{
+			Path:      "/api-keys",
+			Name:      "api-keys",
+			Component: "LAYOUT",
+			Redirect:  "/api-keys/list",
+			Meta: MenuMeta{
+				Title: "API密钥",
+				Icon:  "secured",
+			},
+			Children: []MenuItem{
+				{
+					Path:      "list",
+					Name:      "ApiKeysList",
+					Component: "/api-keys/list/index",
+					Meta: MenuMeta{
+						Title: "密钥管理",
+					},
+				},
+			},
+		},
+		{
+			Path:      "/logs",
+			Name:      "logs",
+			Component: "LAYOUT",
+			Redirect:  "/logs/my",
+			Meta: MenuMeta{
+				Title: "模型日志",
+				Icon:  "chart-bar",
+			},
+			Children: []MenuItem{
+				{
+					Path:      "my",
+					Name:      "MyLogs",
+					Component: "/logs/my/index",
+					Meta: MenuMeta{
+						Title: "我的记录",
+					},
+				},
+				{
+					Path:      "stats",
+					Name:      "LogStats",
+					Component: "/logs/stats/index",
+					Meta: MenuMeta{
+						Title: "使用统计",
+					},
+				},
+			},
+		},
+	}
+
+	// 如果是管理员，添加管理员专属菜单
+	if role == "admin" {
+		adminMenus := []MenuItem{
+			{
+				Path:      "/admin",
+				Name:      "admin",
+				Component: "LAYOUT",
+				Redirect:  "/admin/users",
+				Meta: MenuMeta{
+					Title: "系统管理",
+					Icon:  "tools",
+				},
+				Children: []MenuItem{
+					{
+						Path:      "users",
+						Name:      "AdminUsers",
+						Component: "/admin/users/index",
+						Meta: MenuMeta{
+							Title: "用户管理",
+						},
+					},
+					{
+						Path:      "dashboard",
+						Name:      "AdminDashboard",
+						Component: "/admin/dashboard/index",
+						Meta: MenuMeta{
+							Title: "系统概览",
+						},
+					},
+					{
+						Path:      "logs",
+						Name:      "AdminLogs",
+						Component: "/admin/logs/index",
+						Meta: MenuMeta{
+							Title: "系统日志",
+						},
+					},
+				},
+			},
+		}
+		baseMenus = append(baseMenus, adminMenus...)
+	}
+
+	return baseMenus
+}
