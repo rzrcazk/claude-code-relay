@@ -82,14 +82,14 @@
 </template>
 <script setup lang="ts">
 import { SearchIcon } from 'tdesign-icons-vue-next';
-import type { PrimaryTableCol } from 'tdesign-vue-next';
+import type { PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { onMounted, ref } from 'vue';
 
 import type { CreateUserRequest, UserInfo } from '@/api/users';
 import { createUser, getUserList, updateUserStatus, UserRole, UserStatus, UserStatusLabels } from '@/api/users';
 
-const COLUMNS: PrimaryTableCol<UserInfo>[] = [
+const COLUMNS: PrimaryTableCol<TableRowData>[] = [
   {
     title: 'ID',
     colKey: 'id',

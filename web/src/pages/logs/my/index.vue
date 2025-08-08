@@ -417,10 +417,11 @@ const resetFilters = () => {
   handleSearch();
 };
 
-const handleDateRangeChange = (value: string[]) => {
-  if (value && value.length === 2) {
-    searchFilters.start_time = value[0];
-    searchFilters.end_time = value[1];
+const handleDateRangeChange = (value: any) => {
+  if (value && Array.isArray(value) && value.length === 2) {
+    // 确保将日期值转换为字符串格式
+    searchFilters.start_time = typeof value[0] === 'string' ? value[0] : String(value[0]);
+    searchFilters.end_time = typeof value[1] === 'string' ? value[1] : String(value[1]);
   } else {
     delete searchFilters.start_time;
     delete searchFilters.end_time;

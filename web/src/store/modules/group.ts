@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+
 import type { Group, GroupListResponse } from '@/api/group';
 import { getGroupList } from '@/api/group';
 
@@ -28,13 +29,15 @@ export const useGroupStore = defineStore('group', {
   getters: {
     // 获取启用状态的分组列表（用于下拉选择）
     enabledGroups: (state): Group[] => state.groupList.filter((group) => group.status === 1),
-    
+
     // 根据ID获取分组信息
-    getGroupById: (state) => (id: number): Group | undefined => 
-      state.groupList.find((group) => group.id === id),
-    
+    getGroupById:
+      (state) =>
+      (id: number): Group | undefined =>
+        state.groupList.find((group) => group.id === id),
+
     // 获取分组选项（用于表单选择）
-    groupOptions: (state) => 
+    groupOptions: (state) =>
       state.groupList
         .filter((group) => group.status === 1)
         .map((group) => ({
@@ -51,11 +54,11 @@ export const useGroupStore = defineStore('group', {
         if (params) {
           this.searchParams = { ...this.searchParams, ...params };
         }
-        
+
         const response: GroupListResponse = await getGroupList(this.searchParams);
-        this.groupList = response.list || [];
+        this.groupList = response.groups || [];
         this.total = response.total || 0;
-        
+
         return response;
       } catch (error) {
         console.error('获取分组列表失败:', error);
