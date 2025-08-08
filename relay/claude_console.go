@@ -314,7 +314,7 @@ func TestHandleClaudeConsoleRequest(account *model.Account) (int, string) {
 		req.Header.Set(name, value)
 	}
 
-	httpClientTimeout := 60 * time.Second
+	httpClientTimeout := 30 * time.Second
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
