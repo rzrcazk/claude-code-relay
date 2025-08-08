@@ -35,7 +35,12 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 
 	body, err := io.ReadAll(c.Request.Body)
 	if nil != err {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": map[string]interface{}{
+				"type":    "request_body_error",
+				"message": "Failed to read request body: " + err.Error(),
+			},
+		})
 		return
 	}
 
@@ -43,7 +48,12 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 
 	req, err := http.NewRequestWithContext(ctx, c.Request.Method, account.RequestURL+"/v1/messages?beta=true", bytes.NewBuffer(body))
 	if nil != err {
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": map[string]interface{}{
+				"type":    "internal_server_error",
+				"message": "Failed to create request: " + err.Error(),
+			},
+		})
 		return
 	}
 
@@ -103,7 +113,12 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		proxyURL, err := url.Parse(account.ProxyURI)
 		if err != nil {
 			log.Printf("invalid proxy URI: %s", err.Error())
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"type":    "proxy_configuration_error",
+					"message": "Invalid proxy URI: " + err.Error(),
+				},
+			})
 			return
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
@@ -117,12 +132,22 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	resp, err := client.Do(req)
 	if nil != err {
 		if errors.Is(err, context.Canceled) {
-			c.AbortWithStatus(http.StatusRequestTimeout)
+			c.JSON(http.StatusRequestTimeout, gin.H{
+				"error": map[string]interface{}{
+					"type":    "timeout_error",
+					"message": "Request was canceled or timed out",
+				},
+			})
 			return
 		}
 
 		log.Println("request conversation failed:", err.Error())
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": map[string]interface{}{
+				"type":    "network_error",
+				"message": "Failed to execute request: " + err.Error(),
+			},
+		})
 		return
 	}
 	defer common.CloseIO(resp.Body)
@@ -136,7 +161,12 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
 			log.Printf("[Claude Console] 创建gzip解压缩器失败: %v", err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"type":    "decompression_error",
+					"message": "Failed to create gzip decompressor: " + err.Error(),
+				},
+			})
 			return
 		}
 		defer gzipReader.Close()
@@ -161,21 +191,41 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
-	// 确保设置正确的流式响应头
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	if c.Writer.Header().Get("Content-Type") == "" {
-		c.Header("Content-Type", "text/event-stream")
-	}
-
-	// 刷新响应头到客户端
-	c.Writer.Flush()
-
-	// 解析token使用量 - 现在使用真正的流式转发
 	var usageTokens *common.TokenUsage
-	usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
-	if err != nil {
-		log.Println("stream copy and parse failed:", err.Error())
+
+	if resp.StatusCode >= 400 {
+		// 错误响应，直接读取全部内容
+		responseBody, readErr := io.ReadAll(responseReader)
+		if readErr != nil {
+			log.Printf("❌ 读取错误响应失败: %v", readErr)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"type":    "response_read_error",
+					"message": "Failed to read error response: " + readErr.Error(),
+				},
+			})
+			return
+		}
+
+		// 调试日志：打印错误响应内容
+		log.Printf("❌ Claude Console错误响应内容: %s", string(responseBody))
+		c.Writer.Write(responseBody)
+	} else {
+		// 确保设置正确的流式响应头
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+		if c.Writer.Header().Get("Content-Type") == "" {
+			c.Header("Content-Type", "text/event-stream")
+		}
+
+		// 刷新响应头到客户端
+		c.Writer.Flush()
+
+		// 解析token使用量 - 现在使用真正的流式转发
+		usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
+		if err != nil {
+			log.Println("stream copy and parse failed:", err.Error())
+		}
 	}
 
 	// 处理响应状态码并更新账号状态

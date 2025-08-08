@@ -87,13 +87,23 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	accessToken, err := getValidAccessToken(account)
 	if err != nil {
 		log.Printf("获取有效访问token失败: %v", err)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": map[string]interface{}{
+				"type":    "authentication_error",
+				"message": "Failed to get valid access token: " + err.Error(),
+			},
+		})
 		return
 	}
 
 	req, err := http.NewRequestWithContext(ctx, c.Request.Method, ClaudeAPIURL, bytes.NewBuffer(body))
 	if nil != err {
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": map[string]interface{}{
+				"type":    "internal_server_error",
+				"message": "Failed to create request: " + err.Error(),
+			},
+		})
 		return
 	}
 
@@ -153,7 +163,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		proxyURL, err := url.Parse(account.ProxyURI)
 		if err != nil {
 			log.Printf("invalid proxy URI: %s", err.Error())
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"type":    "proxy_configuration_error",
+					"message": "Invalid proxy URI: " + err.Error(),
+				},
+			})
 			return
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
@@ -167,12 +182,22 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	resp, err := client.Do(req)
 	if nil != err {
 		if errors.Is(err, context.Canceled) {
-			c.AbortWithStatus(http.StatusRequestTimeout)
+			c.JSON(http.StatusRequestTimeout, gin.H{
+				"error": map[string]interface{}{
+					"type":    "timeout_error",
+					"message": "Request was canceled or timed out",
+				},
+			})
 			return
 		}
 
 		log.Printf("❌ 请求失败: %v", err)
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": map[string]interface{}{
+				"type":    "network_error",
+				"message": "Failed to execute request: " + err.Error(),
+			},
+		})
 		return
 	}
 	defer common.CloseIO(resp.Body)
@@ -186,7 +211,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
 			log.Printf("[Claude API] 创建gzip解压缩器失败: %v", err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"type":    "decompression_error",
+					"message": "Failed to create gzip decompressor: " + err.Error(),
+				},
+			})
 			return
 		}
 		defer gzipReader.Close()
@@ -207,7 +237,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		responseBody, readErr = io.ReadAll(responseReader)
 		if readErr != nil {
 			log.Printf("❌ 读取错误响应失败: %v", readErr)
-			c.AbortWithStatus(resp.StatusCode)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": map[string]interface{}{
+					"type":    "response_read_error",
+					"message": "Failed to read error response: " + readErr.Error(),
+				},
+			})
 			return
 		}
 
