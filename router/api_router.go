@@ -73,6 +73,7 @@ func SetAPIRouter(server *gin.Engine) {
 				account.DELETE("/delete/:id", controller.DeleteAccount)                          // 删除账号
 				account.PUT("/update-active-status/:id", controller.UpdateAccountActiveStatus)   // 更新账号激活状态
 				account.PUT("/update-current-status/:id", controller.UpdateAccountCurrentStatus) // 更新账号当前状态
+				account.POST("/test/:id", controller.TestAccount)                                // 测试账号连通性
 			}
 
 			// Claude OAuth 相关
