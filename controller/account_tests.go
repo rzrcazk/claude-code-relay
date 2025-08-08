@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"claude-code-relay/common"
 	"claude-code-relay/constant"
 	"claude-code-relay/model"
 	"claude-code-relay/tests"
@@ -56,7 +55,6 @@ func TestAccount(c *gin.Context) {
 	// 获取账号信息
 	account, err := model.GetAccountByID(req.AccountID)
 	if err != nil {
-		common.SysError(fmt.Sprintf("测试账号时获取账号信息失败: %v", err))
 		c.JSON(http.StatusNotFound, gin.H{
 			"message": "账号不存在",
 			"code":    constant.NotFound,
@@ -73,7 +71,6 @@ func TestAccount(c *gin.Context) {
 		statusCode, err := tests.TestClaudeAccount(account)
 		testResult.StatusCode = statusCode
 		if err != nil {
-			common.SysError(fmt.Sprintf("测试Claude账号失败: %v", err))
 			testResult.Success = false
 			testResult.Message = fmt.Sprintf("测试失败: %v", err)
 		} else if statusCode == http.StatusOK {
@@ -88,7 +85,6 @@ func TestAccount(c *gin.Context) {
 		statusCode, err := tests.TestClaudeConsoleAccount(account)
 		testResult.StatusCode = statusCode
 		if err != nil {
-			common.SysError(fmt.Sprintf("测试Claude Console账号失败: %v", err))
 			testResult.Success = false
 			testResult.Message = fmt.Sprintf("测试失败: %v", err)
 		} else if statusCode == http.StatusOK {
@@ -108,10 +104,6 @@ func TestAccount(c *gin.Context) {
 		})
 		return
 	}
-
-	// 记录测试日志
-	common.SysLog(fmt.Sprintf("账号测试完成 - 账号ID: %d, 平台: %s, 结果: %v, 状态码: %d",
-		req.AccountID, account.PlatformType, testResult.Success, testResult.StatusCode))
 
 	// 返回测试结果
 	c.JSON(http.StatusOK, gin.H{
