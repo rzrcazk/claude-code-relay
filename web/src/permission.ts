@@ -16,6 +16,12 @@ router.beforeEach(async (to, from, next) => {
   const permissionStore = getPermissionStore();
   const { whiteListRouters } = permissionStore;
 
+  // 白名单路由直接放行
+  if (whiteListRouters.includes(to.path)) {
+    next();
+    return;
+  }
+
   const userStore = useUserStore();
 
   if (userStore.token) {
@@ -57,15 +63,11 @@ router.beforeEach(async (to, from, next) => {
       NProgress.done();
     }
   } else {
-    /* white list router */
-    if (whiteListRouters.includes(to.path)) {
-      next();
-    } else {
-      next({
-        path: '/login',
-        query: { redirect: encodeURIComponent(to.fullPath) },
-      });
-    }
+    // 没有token且不在白名单中，跳转到登录页
+    next({
+      path: '/login',
+      query: { redirect: encodeURIComponent(to.fullPath) },
+    });
     NProgress.done();
   }
 });
