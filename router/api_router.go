@@ -29,6 +29,8 @@ func SetAPIRouter(server *gin.Engine) {
 			auth.POST("/login", controller.Login)
 			auth.POST("/register", controller.Register)
 			auth.POST("/send-verification-code", controller.SendVerificationCode)
+			auth.GET("/api-key", controller.GetApiKeyInfo)                    // 根据API Key查询统计信息（公开接口）
+			auth.GET("/api-key/:api_key", controller.GetApiKeyInfo)          // 支持URL路径参数方式
 		}
 
 		// 系统状态

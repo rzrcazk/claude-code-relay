@@ -6,6 +6,7 @@ import (
 	"claude-code-relay/service"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -283,5 +284,99 @@ func GetApiKeys(c *gin.Context) {
 		"message": "获取API Key列表成功",
 		"code":    constant.Success,
 		"data":    result,
+	})
+}
+
+// GetApiKeyInfo 根据API Key获取统计信息和日志（公开接口，不需要登录）
+func GetApiKeyInfo(c *gin.Context) {
+	// 获取API Key，支持从URL参数或查询参数获取
+	apiKeyStr := c.Param("api_key")
+	if apiKeyStr == "" {
+		apiKeyStr = c.Query("api_key")
+	}
+
+	if apiKeyStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "API Key不能为空",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	// 验证API Key是否存在且有效
+	apiKey, err := model.GetApiKeyByKey(apiKeyStr)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "API Key不存在或已失效",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	// 获取分页参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	// 获取30天统计数据
+	statsReq := &model.StatsQueryRequest{
+		ApiKeyID: &apiKey.ID,
+	}
+
+	// 使用最近30天作为默认时间范围
+	now := time.Now()
+	startTime := time.Date(now.Year(), now.Month(), now.Day()-30, 0, 0, 0, 0, now.Location())
+	endTime := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+	statsReq.StartTime = &startTime
+	statsReq.EndTime = &endTime
+
+	// 获取完整统计数据
+	stats, err := model.GetCompleteStats(statsReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取统计数据失败",
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	// 获取日志列表
+	filters := &model.LogFilters{
+		ApiKeyID:  &apiKey.ID,
+		StartTime: &startTime,
+		EndTime:   &endTime,
+	}
+
+	logs, total, err := model.GetLogsWithFilters(filters, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取日志数据失败",
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	// 返回响应
+	c.JSON(http.StatusOK, gin.H{
+		"code": constant.Success,
+		"data": gin.H{
+			"api_key_info": gin.H{
+				"id":     apiKey.ID,
+				"name":   apiKey.Name,
+				"status": apiKey.Status,
+			},
+			"stats": stats,
+			"logs": gin.H{
+				"list":  logs,
+				"total": total,
+				"page":  page,
+				"limit": limit,
+			},
+		},
 	})
 }
