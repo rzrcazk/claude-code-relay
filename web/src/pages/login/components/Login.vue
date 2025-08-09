@@ -84,8 +84,8 @@ const userStore = useUserStore();
 
 const INITIAL_DATA = {
   email: '',
-  account: 'admin',
-  password: 'admin123',
+  account: '',
+  password: '',
   verifyCode: '',
   checked: false,
 };
