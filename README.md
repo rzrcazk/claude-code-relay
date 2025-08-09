@@ -2,12 +2,14 @@
 
 基于Go + Gin的Claude Code 镜像中转服务，采用分层架构设计。支持多账号池管理、智能负载均衡、API Key分发、使用统计和成本计算。包含完整的Vue 3管理界面，基于TDesign组件库。   
 
+![home.png](docs/home.png)
+
 ## ⚠️ 重要提醒
 使用本项目前请仔细阅读：
 
-🚨 服务条款风险: 使用本项目可能违反Anthropic的服务条款。请在使用前仔细阅读Anthropic的用户协议，使用本项目的一切风险由用户自行承担。  
+🚨 服务条款风险: 使用本项目可能违反Anthropic的服务条款。请在使用前仔细阅读Anthropic的用户协议，使用本项目的一切风险由用户自行承担。    
 
-📖 免责声明: 本项目仅供技术学习和研究使用，作者不对因使用本项目导致的账户封禁、服务中断或其他损失承担任何责任。  
+📖 免责声明: 本项目仅供技术学习和研究使用，作者不对因使用本项目导致的账户封禁、服务中断或其他损失承担任何责任。    
 
 ## 💡 能得到什么?
 
@@ -187,6 +189,38 @@ pnpm run build
 
 # 部署到服务器即可
 ```
+
+## 💐 如何在ClaudeCode中使用此服务?
+
+在ClaudeCode中使用此服务非常简单，只需将 Claude Code 的请求地址换成此服务地址和秘钥即可。以下是具体步骤：  
+
+```bash
+# 在ClaudeCode中配置API请求地址 (建议开启https)
+export ANTHROPIC_BASE_URL=https://your-server-domain/claude-code
+
+# 在ClaudeCode中配置API密钥
+export ANTHROPIC_AUTH_TOKEN="你的API密钥"
+```
+
+另一种方法, 创建并配置 Settings 文件： 在 ~/.claude/settings.json 文件并配置您的 API 密钥: 
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your-api-key-here",
+    "ANTHROPIC_BASE_URL": "https://your-server-domain/claude-code",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC":1
+
+  },
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "apiKeyHelper": "echo 'your-api-key-here'"
+}
+```
+
+**更加详细的方法, 进入到后台页面, 点击右上角 `帮助文档` 或者直接访问页面 `/help/index` 地址, 有更加详细的使用教程.**   
+![help.png](docs/help.png)
 
 
 ## ❓ 常见问题
