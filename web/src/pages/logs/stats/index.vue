@@ -80,7 +80,7 @@
     </div>
 
     <!-- Token使用和费用分布 -->
-    <t-card v-if="statsData?.summary" title="Token使用和费用分布" :bordered="false" class="distribution-card">
+    <t-card v-if="statsData?.summary" title="相关分布汇总" :bordered="false" class="distribution-card">
       <t-row :gutter="[16, 16]">
         <t-col :span="12">
           <div class="chart-section">
@@ -138,14 +138,14 @@ const initDefaultDateRange = () => {
   const today = new Date();
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(today.getDate() - 6); // 包含今天，往前6天
-  
+
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
-  
+
   return [formatDate(sevenDaysAgo), formatDate(today)];
 };
 
@@ -394,7 +394,6 @@ const handleInputChange = () => {
   fetchStats();
 };
 
-
 // 组件挂载
 onMounted(() => {
   fetchStats();
@@ -417,6 +416,7 @@ onUnmounted(() => {
 <style lang="less" scoped>
 .stats-page {
   padding: 16px;
+  padding-top: 0;
 
   .filter-card {
     margin-bottom: 16px;
