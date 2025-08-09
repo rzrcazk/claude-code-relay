@@ -16,7 +16,7 @@
       </template>
       <menu-content :nav-data="menu" />
       <template #operations>
-        <span :class="versionCls"> Version v1.0.0-beta.1 </span>
+        <span :class="versionCls"> {{ version }} </span>
       </template>
     </t-menu>
     <div :class="`${prefix}-side-nav-placeholder${collapsed ? '-hidden' : ''}`"></div>
@@ -27,10 +27,7 @@ import { difference, remove, union } from 'lodash';
 import type { MenuValue } from 'tdesign-vue-next';
 import type { PropType } from 'vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 
-import AssetLogoFull from '@/assets/assets-logo-full.svg?component';
-import AssetLogo from '@/assets/assets-t-logo.svg?component';
 import { prefix } from '@/config/global';
 import { getActive } from '@/router';
 import { useSettingStore } from '@/store';
@@ -41,7 +38,7 @@ import MenuContent from './MenuContent.vue';
 const { menu, showLogo, isFixed, layout, theme, isCompact } = defineProps({
   menu: {
     type: Array as PropType<MenuRoute[]>,
-    default: () => [],
+    default: (): MenuRoute[] => [],
   },
   showLogo: {
     type: Boolean as PropType<boolean>,
@@ -111,14 +108,6 @@ const sideNavCls = computed(() => {
     },
   ];
 });
-const logoCls = computed(() => {
-  return [
-    `${prefix}-side-nav-logo-${collapsed.value ? 't' : 'tdesign'}-logo`,
-    {
-      [`${prefix}-side-nav-dark`]: sideMode.value,
-    },
-  ];
-});
 const versionCls = computed(() => {
   return [
     `version-container`,
@@ -127,6 +116,9 @@ const versionCls = computed(() => {
     },
   ];
 });
+
+const version = computed(() => `Version v${__APP_VERSION__}`);
+
 const menuCls = computed(() => {
   return [
     `${prefix}-side-nav`,
@@ -138,7 +130,6 @@ const menuCls = computed(() => {
   ];
 });
 
-const router = useRouter();
 const settingStore = useSettingStore();
 
 const autoCollapsed = () => {
@@ -158,14 +149,5 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', autoCollapsed);
 });
-
-const goHome = () => {
-  router.push('/dashboard/base');
-};
-
-const getLogo = () => {
-  if (collapsed.value) return AssetLogo;
-  return AssetLogoFull;
-};
 </script>
 <style lang="less" scoped></style>

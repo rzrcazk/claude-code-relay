@@ -6,6 +6,8 @@ import type { UserConfig } from 'vite';
 import { viteMockServe } from 'vite-plugin-mock';
 import svgLoader from 'vite-svg-loader';
 
+import packageJson from './package.json';
+
 // https://vitejs.dev/config/
 export default (): UserConfig => {
   return {
@@ -14,6 +16,10 @@ export default (): UserConfig => {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
+    },
+
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version),
     },
 
     css: {
