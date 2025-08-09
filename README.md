@@ -2,7 +2,14 @@
 
 基于Go + Gin的Claude Code 镜像中转服务，采用分层架构设计。支持多账号池管理、智能负载均衡、API Key分发、使用统计和成本计算。包含完整的Vue 3管理界面，基于TDesign组件库。   
 
-## 💡 你能得到什么?
+## ⚠️ 重要提醒
+使用本项目前请仔细阅读：
+
+🚨 服务条款风险: 使用本项目可能违反Anthropic的服务条款。请在使用前仔细阅读Anthropic的用户协议，使用本项目的一切风险由用户自行承担。  
+
+📖 免责声明: 本项目仅供技术学习和研究使用，作者不对因使用本项目导致的账户封禁、服务中断或其他损失承担任何责任。  
+
+## 💡 能得到什么?
 
 与三五个好友一起拼车使用 `Claude Code` 账号, 同时也可以作为多个 "车主" 为不同的用户提供服务.   
 
@@ -61,150 +68,10 @@ web/
 - Go 1.21+
 - Node.js 18.18.0+ (前端开发)
 - MySQL 8.0+
-- Redis (可选，用于限流和缓存)
-
-### 后端启动
-
-```bash
-# 1. 安装依赖
-go mod tidy
-
-# 2. 配置环境变量
-cp .env.example .env
-# 生成必需的安全密钥
-SESSION_SECRET=$(openssl rand -base64 32)
-JWT_SECRET=$(openssl rand -base64 32)  
-SALT=$(openssl rand -base64 16)
-
-# 3. 启动后端服务（端口8080）
-go run main.go
-```
-
-### 前端启动
-
-```bash
-# 1. 进入前端目录
-cd web
-
-# 2. 安装依赖
-npm install
-
-# 3. 启动开发服务器（端口3005）
-npm run dev
-
-# 或使用Mock数据开发
-npm run dev:mock
-```
-
-### 访问系统
-- 后端API：http://localhost:8080/api/v1/
-- 前端界面：http://localhost:3005
-- 健康检查：http://localhost:8080/health
-- 默认管理员：`admin` / `admin123`
+- Redis
 
 ## 📋 核心API
-
-### 认证接口
-```bash
-# 用户登录
-POST /api/v1/auth/login
-{"username":"admin","password":"admin123"}
-
-# 用户注册  
-POST /api/v1/auth/register
-{"username":"user","email":"user@example.com","password":"123456"}
-```
-
-### 管理接口（需管理员权限）
-```bash
-# 账号管理
-GET    /api/v1/admin/accounts
-POST   /api/v1/admin/accounts
-PUT    /api/v1/admin/accounts/{id}
-DELETE /api/v1/admin/accounts/{id}
-
-# API Key管理
-GET    /api/v1/api-keys
-POST   /api/v1/api-keys
-DELETE /api/v1/api-keys/{id}
-
-# 分组管理
-GET    /api/v1/groups
-POST   /api/v1/groups
-
-# 使用统计
-GET    /api/v1/admin/logs
-```
-
-### Claude中转接口
-```bash
-# Claude API中转（兼容官方格式）
-POST /v1/messages
-Authorization: Bearer YOUR_API_KEY
-
-{
-  "model": "claude-3-sonnet-20240229",
-  "messages": [{"role":"user","content":"Hello"}],
-  "max_tokens": 1000
-}
-```
-
-## ⚙️ 配置说明
-
-### 必需环境变量（生产环境）
-```bash
-SESSION_SECRET=$(openssl rand -base64 32)
-JWT_SECRET=$(openssl rand -base64 32)  
-SALT=$(openssl rand -base64 16)
-```
-
-### 数据库配置
-**MySQL（推荐生产环境）**
-```bash
-MYSQL_HOST=localhost
-MYSQL_USER=root
-MYSQL_PASSWORD=your-password
-MYSQL_DATABASE=claude_code_relay
-```
-
-**MySQL数据库**
-- 必须配置MySQL相关环境变量
-- 支持高并发和大数据量
-- 提供更好的性能和可靠性
-
-### Redis缓存（可选）
-```bash
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your-password  # 可选
-```
-
-### 前端环境变量
-```bash
-# .env.development
-VITE_API_URL=http://127.0.0.1:8080
-VITE_API_URL_PREFIX=/api/v1
-```
-
-## 🔧 核心功能
-
-### 智能账号池
-- 多Claude账号统一管理和负载均衡
-- 基于权重和优先级的智能调度算法
-- 实时状态监控和自动故障转移
-- 支持代理配置和平台切换
-
-### 使用统计分析
-- 详细的Token使用量统计和成本计算
-- 支持多种Claude模型的精确计费
-- 实时数据可视化和报告生成
-- 账号和API Key级别的使用监控
-
-### 权限管理系统
-- 完整的用户注册、登录和权限控制
-- Session + JWT双重认证机制
-- 灵活的API Key创建和分组管理
-- 细粒度的访问权限控制
+- [Apifox在线文档](https://s.apifox.cn/ba2f5ebd-5a13-4e3a-9c42-628208b1d09f) 涵盖了大部分接口
 
 ## 🏗 设计架构
 
@@ -221,7 +88,7 @@ VITE_API_URL_PREFIX=/api/v1
 4. **故障转移**: 自动跳过异常账号
 
 ### 技术栈
-**后端**: Go 1.21+, Gin, GORM, Redis(可选)
+**后端**: Go 1.21+, Gin, GORM, Redis
 **前端**: Vue 3.5+, TypeScript, TDesign, Vite 6+
 **数据库**: MySQL 8.0+
 
@@ -290,92 +157,41 @@ ls out/
 export SESSION_SECRET=$(openssl rand -base64 32)
 export JWT_SECRET=$(openssl rand -base64 32)
 export SALT=$(openssl rand -base64 16)
+...
 
-# 配置数据库（可选）
+# 配置数据库
 export MYSQL_HOST=your-host
 export MYSQL_USER=your-user
 export MYSQL_PASSWORD=your-password
+...
 
 # 启动服务
 ./claude-code-relay
 ```
 
-### 反向代理
-
-**Nginx配置示例**
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-**Caddy配置示例**
-```caddyfile
-your-domain.com {
-    reverse_proxy 127.0.0.1:8080
-}
-```
-
-## 📋 使用示例
-
-### 1. 管理员登录获取Token
+**生产环境前端启动**
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+# 进入前端目录
+cd web
+
+# 安装依赖 (推荐使用pnpm)
+pnpm install
+
+# 新增.env 文件, 参考 .env.development 配置
+cp .env.development .env
+vi .env # 修改 VITE_API_URL 为你的后端地址
+
+# 构建生产版本
+pnpm run build
+
+# 部署到服务器即可
 ```
 
-### 2. 添加Claude账号到账号池
-```bash
-curl -X POST http://localhost:8080/api/v1/admin/accounts \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Claude官方账号",
-    "platform_type": "claude",
-    "request_url": "https://api.anthropic.com",
-    "secret_key": "sk-your-claude-api-key",
-    "priority": 100,
-    "weight": 100
-  }'
-```
-
-### 3. 创建API Key用于中转
-```bash
-curl -X POST http://localhost:8080/api/v1/api-keys \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "我的中转Key",
-    "expires_at": "2025-12-31 23:59:59"
-  }'
-```
-
-### 4. 通过中转服务调用Claude
-```bash
-curl -X POST http://localhost:8080/v1/messages \
-  -H "Authorization: Bearer YOUR_RELAY_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-sonnet-20240229",
-    "messages": [{"role":"user","content":"你好，Claude！"}],
-    "max_tokens": 1000
-  }'
-```
 
 ## ❓ 常见问题
 
 **Q: 如何重置管理员密码？**
 A: 删除数据库中的admin用户记录，重启服务会自动重新创建默认管理员。
-
-**Q: Redis连接失败是否影响正常使用？**  
-A: 不影响核心功能，但会跳过限流和缓存特性。
 
 **Q: 支持哪些Claude模型？**
 A: 支持所有Claude模型，包括Claude-3.5系列，成本计算会自动适配不同模型。
@@ -383,11 +199,16 @@ A: 支持所有Claude模型，包括Claude-3.5系列，成本计算会自动适�
 **Q: 如何查看账号使用统计？**
 A: 通过前端管理界面或API接口查看详细的使用统计和成本分析。
 
-**Q: 前端开发时如何处理跨域？**  
-A: 前端开发服务器已配置代理，会自动转发API请求到后端8080端口。
+**Q: 无法正常访问Claude官方服务？**  
+A: Claude等国外模型服务商禁用国内IP访问, 自行使用代理解决 (建议使用高质量的代理IP)。
+
+
+## 🤝 鸣谢
+- 灵感来源: [claude-relay-service](https://github.com/Wei-Shaw/claude-relay-service)
+- 本项目 90% 代码均由 [Claude Code](https://www.anthropic.com/claude-code) 开发完成, 感谢Anthropic提供强大的AI能力支持.
 
 ---
 
 ## 📄 许可证
 
-MIT License - 欢迎贡献代码和提交Issue！
+[MIT License](LICENSE) - 欢迎贡献代码和提交Issue！
