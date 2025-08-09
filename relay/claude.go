@@ -504,6 +504,15 @@ func getValidAccessToken(account *model.Account) (string, error) {
 				log.Printf("刷新失败但token未完全过期，尝试使用当前token")
 				return account.AccessToken, nil
 			}
+
+			// token已过期且刷新失败，禁用此账号
+			log.Printf("token已过期且刷新失败，禁用账号: %s", account.Name)
+			account.CurrentStatus = 2 // 设置为禁用状态
+			if updateErr := model.UpdateAccount(account); updateErr != nil {
+				log.Printf("禁用账号失败: %v", updateErr)
+			} else {
+				log.Printf("账号 %s 已被自动禁用", account.Name)
+			}
 			return "", fmt.Errorf("token已过期且刷新失败: %v", err)
 		}
 
