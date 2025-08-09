@@ -50,6 +50,13 @@ func (s *CronService) Start() {
 		return
 	}
 
+	// 每10分钟检查限流过期账号
+	_, err = s.cron.AddFunc("0 */1 * * * *", s.checkRateLimitExpiredAccounts)
+	if err != nil {
+		log.Printf("Failed to add rate limit check cron job: %v", err)
+		return
+	}
+
 	// 启动定时任务
 	s.cron.Start()
 	common.SysLog("Cron service started successfully")
@@ -324,4 +331,94 @@ func (s *CronService) ManualRecoverAbnormalAccounts() (int, int, error) {
 
 	common.SysLog(fmt.Sprintf("Manual abnormal accounts recovery completed. Recovered: %d, Failed: %d", recoveredCount, failedCount))
 	return recoveredCount, failedCount, nil
+}
+
+// checkRateLimitExpiredAccounts 检查限流过期账号
+func (s *CronService) checkRateLimitExpiredAccounts() {
+	startTime := time.Now()
+	common.SysLog("Starting rate limit expired accounts check task")
+
+	// 筛选current_status==3且active_status==1的账号
+	var rateLimitedAccounts []model.Account
+	err := model.DB.Where("current_status = ? AND active_status = ?", 3, 1).Find(&rateLimitedAccounts).Error
+	if err != nil {
+		common.SysError("Failed to query rate limited accounts: " + err.Error())
+		return
+	}
+
+	if len(rateLimitedAccounts) == 0 {
+		common.SysLog("No rate limited accounts found for checking")
+		return
+	}
+
+	common.SysLog(fmt.Sprintf("Found %d rate limited accounts to check", len(rateLimitedAccounts)))
+
+	recoveredCount := 0
+	now := time.Now()
+
+	// 检查每个限流账号的限流结束时间
+	for _, account := range rateLimitedAccounts {
+		// 检查限流结束时间是否已过期
+		if account.RateLimitEndTime != nil && now.After(time.Time(*account.RateLimitEndTime)) {
+			// 限流时间已过，将账号状态恢复为正常并清空限流结束时间
+			err := model.DB.Model(&account).Updates(map[string]interface{}{
+				"current_status":      1,
+				"rate_limit_end_time": nil,
+			}).Error
+			if err != nil {
+				common.SysError(fmt.Sprintf("Failed to recover rate limited account %s (ID: %d): %v", account.Name, account.ID, err))
+				continue
+			}
+			recoveredCount++
+			common.SysLog(fmt.Sprintf("Rate limited account %s (ID: %d) recovered successfully, limit expired at %v", account.Name, account.ID, account.RateLimitEndTime))
+		} else if account.RateLimitEndTime != nil {
+			common.SysLog(fmt.Sprintf("Account %s (ID: %d) still rate limited until %v", account.Name, account.ID, account.RateLimitEndTime))
+		} else {
+			common.SysLog(fmt.Sprintf("Account %s (ID: %d) has no rate limit end time, skipping", account.Name, account.ID))
+		}
+	}
+
+	duration := time.Since(startTime)
+	common.SysLog(fmt.Sprintf("Rate limit expired accounts check task completed in %s. Recovered: %d", duration.String(), recoveredCount))
+}
+
+// ManualCheckRateLimitExpiredAccounts 手动检查限流过期账号（用于管理员操作）
+func (s *CronService) ManualCheckRateLimitExpiredAccounts() (int, error) {
+	common.SysLog("Manual rate limit expired accounts check triggered")
+
+	// 筛选current_status==3且active_status==1的账号
+	var rateLimitedAccounts []model.Account
+	err := model.DB.Where("current_status = ? AND active_status = ?", 3, 1).Find(&rateLimitedAccounts).Error
+	if err != nil {
+		return 0, err
+	}
+
+	if len(rateLimitedAccounts) == 0 {
+		common.SysLog("No rate limited accounts found for checking")
+		return 0, nil
+	}
+
+	recoveredCount := 0
+	now := time.Now()
+
+	// 检查每个限流账号的限流结束时间
+	for _, account := range rateLimitedAccounts {
+		// 检查限流结束时间是否已过期
+		if account.RateLimitEndTime != nil && now.After(time.Time(*account.RateLimitEndTime)) {
+			// 限流时间已过，将账号状态恢复为正常并清空限流结束时间
+			err := model.DB.Model(&account).Updates(map[string]interface{}{
+				"current_status":      1,
+				"rate_limit_end_time": nil,
+			}).Error
+			if err != nil {
+				common.SysError(fmt.Sprintf("Failed to recover rate limited account %s (ID: %d): %v", account.Name, account.ID, err))
+				continue
+			}
+			recoveredCount++
+			common.SysLog(fmt.Sprintf("Rate limited account %s (ID: %d) recovered successfully, limit expired at %v", account.Name, account.ID, account.RateLimitEndTime))
+		}
+	}
+
+	common.SysLog(fmt.Sprintf("Manual rate limit expired accounts check completed. Recovered: %d", recoveredCount))
+	return recoveredCount, nil
 }
