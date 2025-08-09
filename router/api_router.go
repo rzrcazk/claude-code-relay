@@ -21,7 +21,7 @@ func SetAPIRouter(server *gin.Engine) {
 
 	// API路由组
 	api := server.Group("/api/v1")
-	api.Use(middleware.RateLimit(120, time.Minute))
+	api.Use(middleware.RateLimit(300, time.Minute))
 	{
 		// 公开接口
 		auth := api.Group("/auth")
