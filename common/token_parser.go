@@ -66,54 +66,69 @@ func (w *StreamCopyWriter) Write(p []byte) (n int, err error) {
 
 // parseLine 解析单行数据提取token使用量
 func (w *StreamCopyWriter) parseLine(line string) {
-	// 解析token使用量和模型信息
+	var dataJSON string
+
+	// 兼容两种SSE格式：
+	// 1. 原格式: "data: {...}"
+	// 2. 新格式: "data:{...}" (前面可能有id:、event:、:HTTP_STATUS等行)
 	if strings.HasPrefix(line, "data: ") {
-		dataJSON := strings.TrimPrefix(line, "data: ")
-		eventType := gjson.Get(dataJSON, "type").String()
+		dataJSON = strings.TrimPrefix(line, "data: ")
+	} else if strings.HasPrefix(line, "data:") {
+		dataJSON = strings.TrimPrefix(line, "data:")
+	} else {
+		// 不是data行，跳过处理
+		return
+	}
 
-		// 检查是否是message_start事件，解析model字段和使用量
-		if eventType == "message_start" {
-			model := gjson.Get(dataJSON, "message.model").String()
-			if model != "" {
-				w.usage.Model = model
-			}
+	// 跳过空data行
+	if strings.TrimSpace(dataJSON) == "" {
+		return
+	}
 
-			// 从message_start中解析使用量
-			usageJSON := gjson.Get(dataJSON, "message.usage")
-			if usageJSON.Exists() {
-				inputTokens := gjson.Get(dataJSON, "message.usage.input_tokens").Num
-				outputTokens := gjson.Get(dataJSON, "message.usage.output_tokens").Num
-				cacheReadInputTokens := gjson.Get(dataJSON, "message.usage.cache_read_input_tokens").Num
-				cacheCreationInputTokens := gjson.Get(dataJSON, "message.usage.cache_creation_input_tokens").Num
+	eventType := gjson.Get(dataJSON, "type").String()
 
-				w.usage.InputTokens = int(inputTokens)
-				w.usage.OutputTokens = int(outputTokens)
-				w.usage.CacheReadInputTokens = int(cacheReadInputTokens)
-				w.usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
-			}
+	// 检查是否是message_start事件，解析model字段和使用量
+	if eventType == "message_start" {
+		model := gjson.Get(dataJSON, "message.model").String()
+		if model != "" {
+			w.usage.Model = model
 		}
 
-		// 检查是否是message_delta事件
-		if eventType == "message_delta" {
-			usageJSON := gjson.Get(dataJSON, "usage")
-			if usageJSON.Exists() {
-				// 解析各种token字段
-				inputTokens := gjson.Get(dataJSON, "usage.input_tokens").Num
-				outputTokens := gjson.Get(dataJSON, "usage.output_tokens").Num
-				cacheReadInputTokens := gjson.Get(dataJSON, "usage.cache_read_input_tokens").Num
-				cacheCreationInputTokens := gjson.Get(dataJSON, "usage.cache_creation_input_tokens").Num
+		// 从message_start中解析使用量
+		usageJSON := gjson.Get(dataJSON, "message.usage")
+		if usageJSON.Exists() {
+			inputTokens := gjson.Get(dataJSON, "message.usage.input_tokens").Num
+			outputTokens := gjson.Get(dataJSON, "message.usage.output_tokens").Num
+			cacheReadInputTokens := gjson.Get(dataJSON, "message.usage.cache_read_input_tokens").Num
+			cacheCreationInputTokens := gjson.Get(dataJSON, "message.usage.cache_creation_input_tokens").Num
 
-				// 更新token使用量
-				if inputTokens > 0 {
-					w.usage.InputTokens = int(inputTokens)
-				}
-				w.usage.OutputTokens += int(outputTokens) // 累加output tokens
-				if cacheReadInputTokens > 0 {
-					w.usage.CacheReadInputTokens = int(cacheReadInputTokens)
-				}
-				if cacheCreationInputTokens > 0 {
-					w.usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
-				}
+			w.usage.InputTokens = int(inputTokens)
+			w.usage.OutputTokens = int(outputTokens)
+			w.usage.CacheReadInputTokens = int(cacheReadInputTokens)
+			w.usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
+		}
+	}
+
+	// 检查是否是message_delta事件
+	if eventType == "message_delta" {
+		usageJSON := gjson.Get(dataJSON, "usage")
+		if usageJSON.Exists() {
+			// 解析各种token字段
+			inputTokens := gjson.Get(dataJSON, "usage.input_tokens").Num
+			outputTokens := gjson.Get(dataJSON, "usage.output_tokens").Num
+			cacheReadInputTokens := gjson.Get(dataJSON, "usage.cache_read_input_tokens").Num
+			cacheCreationInputTokens := gjson.Get(dataJSON, "usage.cache_creation_input_tokens").Num
+
+			// 更新token使用量
+			if inputTokens > 0 {
+				w.usage.InputTokens = int(inputTokens)
+			}
+			w.usage.OutputTokens += int(outputTokens) // 累加output tokens
+			if cacheReadInputTokens > 0 {
+				w.usage.CacheReadInputTokens = int(cacheReadInputTokens)
+			}
+			if cacheCreationInputTokens > 0 {
+				w.usage.CacheCreationInputTokens = int(cacheCreationInputTokens)
 			}
 		}
 	}
