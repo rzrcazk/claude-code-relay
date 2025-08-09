@@ -1,53 +1,50 @@
 <template>
   <t-row :gutter="16" class="row-container">
     <t-col :xs="12" :xl="6">
-      <t-card :title="t('pages.dashboardBase.rankList.title')" class="dashboard-rank-card" :bordered="false">
-        <template #actions>
-          <t-radio-group default-value="dateVal" variant="default-filled">
-            <t-radio-button value="dateVal">{{ t('pages.dashboardBase.rankList.week') }}</t-radio-button>
-            <t-radio-button value="monthVal">{{ t('pages.dashboardBase.rankList.month') }}</t-radio-button>
-          </t-radio-group>
-        </template>
-        <t-table :data="SALE_TEND_LIST" :columns="SALE_COLUMNS" row-key="productName">
+      <t-card title="账号费用排名" subtitle="最近7天" class="dashboard-rank-card" :bordered="false">
+        <t-table
+          :data="accountRankingList"
+          :columns="ACCOUNT_COLUMNS"
+          :loading="loading"
+          row-key="account_id"
+          max-height="600"
+        >
           <template #index="{ rowIndex }">
             <span :class="getRankClass(rowIndex)">
               {{ rowIndex + 1 }}
             </span>
           </template>
-          <template #growUp="{ row }">
-            <span>
-              <trend :type="row.growUp > 0 ? 'up' : 'down'" :describe="Math.abs(row.growUp)" />
-            </span>
+          <template #cost="{ row }">
+            <span>${{ row.cost.toFixed(2) }}</span>
           </template>
-          <template #operation="slotProps">
-            <t-link theme="primary" @click="rehandleClickOp(slotProps)">{{
-              t('pages.dashboardBase.rankList.info')
-            }}</t-link>
+          <template #growth_rate="{ row }">
+            <trend :type="row.growth_rate >= 0 ? 'up' : 'down'" :describe="formatGrowthRate(row.growth_rate)" />
           </template>
         </t-table>
       </t-card>
     </t-col>
     <t-col :xs="12" :xl="6">
-      <t-card :title="t('pages.dashboardBase.rankList.title')" class="dashboard-rank-card" :bordered="false">
-        <template #actions>
-          <t-radio-group default-value="dateVal" variant="default-filled">
-            <t-radio-button value="dateVal">{{ t('pages.dashboardBase.rankList.week') }}</t-radio-button>
-            <t-radio-button value="monthVal">{{ t('pages.dashboardBase.rankList.month') }}</t-radio-button>
-          </t-radio-group>
-        </template>
-        <t-table :data="BUY_TEND_LIST" :columns="BUY_COLUMNS" row-key="productName">
+      <t-card title="API Key使用排名" subtitle="最近7天" class="dashboard-rank-card" :bordered="false">
+        <t-table
+          :data="apiKeyRankingList"
+          :columns="APIKEY_COLUMNS"
+          :loading="loading"
+          row-key="api_key_id"
+          max-height="600"
+        >
           <template #index="{ rowIndex }">
             <span :class="getRankClass(rowIndex)">
               {{ rowIndex + 1 }}
             </span>
           </template>
-          <template #growUp="{ row }">
-            <trend :type="row.growUp > 0 ? 'up' : 'down'" :describe="Math.abs(row.growUp)" />
+          <template #requests="{ row }">
+            <span>{{ formatNumber(row.requests) }}</span>
           </template>
-          <template #operation="slotProps">
-            <t-link theme="primary" @click="rehandleClickOp(slotProps)">{{
-              t('pages.dashboardBase.rankList.info')
-            }}</t-link>
+          <template #tokens="{ row }">
+            <span>{{ formatNumber(row.tokens) }}</span>
+          </template>
+          <template #growth_rate="{ row }">
+            <trend :type="row.growth_rate >= 0 ? 'up' : 'down'" :describe="formatGrowthRate(row.growth_rate)" />
           </template>
         </t-table>
       </t-card>
@@ -56,89 +53,124 @@
 </template>
 <script setup lang="ts">
 import type { TdBaseTableProps } from 'tdesign-vue-next';
+import { computed } from 'vue';
 
+import type { DashboardStats } from '@/api/dashboard';
 import Trend from '@/components/trend/index.vue';
 import { t } from '@/locales';
 
-import { BUY_TEND_LIST, SALE_TEND_LIST } from '../constants';
+interface Props {
+  dashboardData?: DashboardStats;
+  loading?: boolean;
+}
 
-const SALE_COLUMNS: TdBaseTableProps['columns'] = [
+const props = withDefaults(defineProps<Props>(), {
+  loading: false,
+});
+
+// 账号排名数据
+const accountRankingList = computed(() => {
+  return props.dashboardData?.account_ranking || [];
+});
+
+// API Key排名数据
+const apiKeyRankingList = computed(() => {
+  return props.dashboardData?.api_key_ranking || [];
+});
+
+const ACCOUNT_COLUMNS: TdBaseTableProps['columns'] = [
   {
     align: 'center',
     colKey: 'index',
-    title: t('pages.dashboardBase.saleColumns.index'),
+    title: '排名',
     width: 70,
     fixed: 'left',
   },
   {
     align: 'left',
     ellipsis: true,
-    colKey: 'productName',
-    title: t('pages.dashboardBase.saleColumns.productName'),
+    colKey: 'account_name',
+    title: '账号名称',
+    width: 120,
+  },
+  {
+    align: 'left',
+    ellipsis: true,
+    colKey: 'platform_type',
+    title: '平台类型',
     width: 150,
   },
   {
     align: 'center',
-    colKey: 'growUp',
-    width: 70,
-    title: t('pages.dashboardBase.saleColumns.growUp'),
+    colKey: 'cost',
+    title: '费用($)',
+    width: 80,
   },
   {
     align: 'center',
-    colKey: 'count',
-    title: t('pages.dashboardBase.saleColumns.count'),
-    width: 70,
-  },
-  {
-    align: 'center',
-    colKey: 'operation',
-    title: t('pages.dashboardBase.saleColumns.operation'),
-    width: 70,
-    fixed: 'right',
+    colKey: 'growth_rate',
+    title: '增长率',
+    width: 80,
   },
 ];
 
-const BUY_COLUMNS: TdBaseTableProps['columns'] = [
+const APIKEY_COLUMNS: TdBaseTableProps['columns'] = [
   {
     align: 'center',
     colKey: 'index',
-    title: t('pages.dashboardBase.buyColumns.index'),
+    title: '排名',
     width: 70,
     fixed: 'left',
   },
   {
     align: 'left',
     ellipsis: true,
-    colKey: 'productName',
+    colKey: 'api_key_name',
+    title: 'API Key名称',
     width: 150,
-    title: t('pages.dashboardBase.buyColumns.productName'),
   },
   {
     align: 'center',
-    colKey: 'growUp',
-    width: 70,
-    title: t('pages.dashboardBase.buyColumns.growUp'),
+    colKey: 'requests',
+    title: '请求数',
+    width: 80,
   },
   {
     align: 'center',
-    colKey: 'count',
-    title: t('pages.dashboardBase.buyColumns.count'),
-    width: 70,
+    colKey: 'tokens',
+    title: 'Tokens',
+    width: 90,
   },
   {
     align: 'center',
-    colKey: 'operation',
-    title: t('pages.dashboardBase.buyColumns.operation'),
-    width: 70,
-    fixed: 'right',
+    colKey: 'growth_rate',
+    title: '增长率',
+    width: 80,
   },
 ];
+
+// 格式化数字
+const formatNumber = (num: number) => {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`;
+  }
+  return num.toString();
+};
+
+// 格式化增长率
+const formatGrowthRate = (rate: number) => {
+  const formattedRate = Math.abs(rate).toFixed(1);
+  return rate >= 0 ? `+${formattedRate}%` : `-${formattedRate}%`;
+};
 
 const rehandleClickOp = (val: MouseEvent) => {
   console.log(val);
 };
 const getRankClass = (index: number) => {
-  return ['dashboard-rank', { 'dashboard-rank__top': index < 3 }];
+  return ['dashboard-rank__cell', { 'dashboard-rank__cell--top': index < 3 }];
 };
 </script>
 <style lang="less" scoped>

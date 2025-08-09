@@ -1,168 +1,101 @@
 <template>
-  <t-card :bordered="false">
-    <t-row>
-      <t-col :xs="12" :xl="9">
-        <t-card
-          :bordered="false"
-          :title="t('pages.dashboardBase.outputOverview.title')"
-          :subtitle="t('pages.dashboardBase.outputOverview.subtitle')"
-          class="dashboard-overview-card overview-panel"
-        >
-          <template #actions>
-            <t-date-range-picker
-              class="card-date-picker-container"
-              theme="primary"
-              mode="date"
-              :default-value="LAST_7_DAYS"
-              @change="(value) => onStokeDataChange(value as string[])"
+  <t-card title="今日数据概览" :bordered="false" class="dashboard-overview-card">
+    <div class="overview-stats">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-title">今日请求</div>
+          <div class="stat-value">{{ loading ? '--' : formatNumber(todayStats.requests) }}</div>
+          <div class="stat-change">
+            较昨日
+            <trend
+              :type="getChangeType(todayStats.requests, yesterdayStats.requests)"
+              :describe="getChangePercent(todayStats.requests, yesterdayStats.requests)"
             />
-          </template>
-          <div id="stokeContainer" style="width: 100%; height: 351px" class="dashboard-chart-container"></div>
-        </t-card>
-      </t-col>
-      <t-col :xs="12" :xl="3">
-        <t-card :bordered="false" class="dashboard-overview-card export-panel">
-          <template #actions>
-            <t-button>{{ t('pages.dashboardBase.outputOverview.export') }}</t-button>
-          </template>
-          <t-row>
-            <t-col :xs="6" :xl="12">
-              <t-card
-                :bordered="false"
-                :subtitle="t('pages.dashboardBase.outputOverview.month.input')"
-                class="inner-card"
-              >
-                <div class="inner-card__content">
-                  <div class="inner-card__content-title">1726</div>
-                  <div class="inner-card__content-footer">
-                    {{ t('pages.dashboardBase.outputOverview.since') }}
-                    <trend class="trend-tag" type="down" :is-reverse-color="false" describe="20.3%" />
-                  </div>
-                </div>
-              </t-card>
-            </t-col>
-            <t-col :xs="6" :xl="12">
-              <t-card
-                :bordered="false"
-                :subtitle="t('pages.dashboardBase.outputOverview.month.output')"
-                class="inner-card"
-              >
-                <div class="inner-card__content">
-                  <div class="inner-card__content-title">226</div>
-                  <div class="inner-card__content-footer">
-                    {{ t('pages.dashboardBase.outputOverview.since') }}
-                    <trend class="trend-tag" type="down" :is-reverse-color="false" describe="20.3%" />
-                  </div>
-                </div>
-              </t-card>
-            </t-col>
-          </t-row>
-        </t-card>
-      </t-col>
-    </t-row>
+          </div>
+        </div>
+
+        <div class="stat-item">
+          <div class="stat-title">今日Tokens</div>
+          <div class="stat-value">{{ loading ? '--' : formatNumber(todayStats.tokens) }}</div>
+          <div class="stat-change">
+            较昨日
+            <trend
+              :type="getChangeType(todayStats.tokens, yesterdayStats.tokens)"
+              :describe="getChangePercent(todayStats.tokens, yesterdayStats.tokens)"
+            />
+          </div>
+        </div>
+
+        <div class="stat-item">
+          <div class="stat-title">今日费用</div>
+          <div class="stat-value">${{ loading ? '--' : todayStats.cost.toFixed(2) }}</div>
+          <div class="stat-change">
+            较昨日
+            <trend
+              :type="getChangeType(todayStats.cost, yesterdayStats.cost)"
+              :describe="getChangePercent(todayStats.cost, yesterdayStats.cost)"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   </t-card>
 </template>
 <script setup lang="ts">
-import { useWindowSize } from '@vueuse/core';
-import { LineChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
-import * as echarts from 'echarts/core';
-import { CanvasRenderer } from 'echarts/renderers';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed } from 'vue';
 
-// 导入样式
+import type { DashboardStats } from '@/api/dashboard';
 import Trend from '@/components/trend/index.vue';
-import { t } from '@/locales';
-import { useSettingStore } from '@/store';
-import { changeChartsTheme } from '@/utils/color';
-import { LAST_7_DAYS } from '@/utils/date';
 
-import { constructInitDataset } from '../index';
+interface Props {
+  dashboardData?: DashboardStats;
+  loading?: boolean;
+}
 
-defineOptions({
-  name: 'DashboardBase',
+const props = withDefaults(defineProps<Props>(), {
+  loading: false,
 });
 
-echarts.use([TooltipComponent, LegendComponent, GridComponent, LineChart, CanvasRenderer]);
+// 今日数据
+const todayStats = computed(() => {
+  return props.dashboardData?.today_stats || { requests: 0, tokens: 0, cost: 0 };
+});
 
-const store = useSettingStore();
-const resizeTime = ref(1);
+// 昨日数据
+const yesterdayStats = computed(() => {
+  return props.dashboardData?.yesterday_stats || { requests: 0, tokens: 0, cost: 0 };
+});
 
-const chartColors = computed(() => store.chartColors);
-
-// stokeCharts
-let stokeContainer: HTMLElement;
-let stokeChart: echarts.ECharts;
-const renderStokeChart = () => {
-  if (!stokeContainer) {
-    stokeContainer = document.getElementById('stokeContainer');
+// 格式化数字
+const formatNumber = (num: number) => {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
   }
-  stokeChart = echarts.init(stokeContainer);
-  stokeChart.setOption(constructInitDataset({ dateTime: LAST_7_DAYS, ...chartColors.value }));
-};
-
-const renderCharts = () => {
-  renderStokeChart();
-};
-
-// chartSize update
-const updateContainer = () => {
-  if (document.documentElement.clientWidth >= 1400 && document.documentElement.clientWidth < 1920) {
-    resizeTime.value = Number((document.documentElement.clientWidth / 2080).toFixed(2));
-  } else if (document.documentElement.clientWidth < 1080) {
-    resizeTime.value = Number((document.documentElement.clientWidth / 1080).toFixed(2));
-  } else {
-    resizeTime.value = 1;
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`;
   }
-
-  stokeChart.resize({
-    width: stokeContainer.clientWidth,
-    height: stokeContainer.clientHeight,
-  });
+  return num.toString();
 };
 
-onMounted(() => {
-  renderCharts();
-  nextTick(() => {
-    updateContainer();
-  });
-});
+// 获取变化类型
+const getChangeType = (current: number, previous: number) => {
+  return current >= previous ? 'up' : 'down';
+};
 
-const { width, height } = useWindowSize();
-watch([width, height], () => {
-  updateContainer();
-});
-
-watch(
-  () => store.brandTheme,
-  () => {
-    changeChartsTheme([stokeChart]);
-  },
-);
-
-watch(
-  () => store.mode,
-  () => {
-    [stokeChart].forEach((item) => {
-      item.dispose();
-    });
-
-    renderCharts();
-  },
-);
-
-const onStokeDataChange = (checkedValues: string[]) => {
-  stokeChart.setOption(constructInitDataset({ dateTime: checkedValues, ...chartColors.value }));
+// 获取变化百分比
+const getChangePercent = (current: number, previous: number) => {
+  if (previous === 0) {
+    return current > 0 ? '+100%' : '0%';
+  }
+  const percent = Math.abs(((current - previous) / previous) * 100);
+  const sign = current >= previous ? '+' : '-';
+  return `${sign}${percent.toFixed(1)}%`;
 };
 </script>
 <style lang="less" scoped>
-:deep(.t-card__body) {
-  padding: var(--td-comp-paddingTB-xxl) var(--td-comp-paddingLR-xxl);
-}
-
 .dashboard-overview-card {
   :deep(.t-card__header) {
-    padding: 0;
+    padding-bottom: 0;
   }
 
   :deep(.t-card__title) {
@@ -171,47 +104,40 @@ const onStokeDataChange = (checkedValues: string[]) => {
   }
 
   :deep(.t-card__body) {
-    margin-top: var(--td-comp-margin-xxl);
-    padding: 0;
-  }
-
-  &.overview-panel {
-    border-right: none;
-  }
-
-  &.export-panel {
-    border-left: none;
-    margin-left: calc(var(--td-comp-margin-xxxl) + var(--td-comp-margin-xxxl));
+    padding: var(--td-comp-paddingTB-xxl) var(--td-comp-paddingLR-xxl);
   }
 }
 
-.inner-card {
-  margin-top: var(--td-comp-margin-s);
-  margin-bottom: var(--td-comp-margin-xxxxl);
-
-  :deep(.t-card__header) {
-    padding-bottom: 0;
+.overview-stats {
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
   }
 
-  :deep(.t-card__body) {
-    margin-top: var(--td-comp-margin-s);
-  }
+  .stat-item {
+    text-align: center;
 
-  &__content {
-    &-title {
-      font-size: var(--td-font-size-headline-medium);
-      line-height: var(--td-line-height-headline-medium);
+    .stat-title {
+      font-size: 14px;
+      color: var(--td-text-color-secondary);
+      margin-bottom: 8px;
     }
 
-    &-footer {
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--td-text-color-primary);
+      margin-bottom: 4px;
+    }
+
+    .stat-change {
+      font-size: 12px;
+      color: var(--td-text-color-placeholder);
       display: flex;
       align-items: center;
-      color: var(--td-text-color-placeholder);
-      margin-top: var(--td-comp-margin-xxl);
-
-      .trend-tag {
-        margin-left: var(--td-comp-margin-s);
-      }
+      justify-content: center;
+      gap: 4px;
     }
   }
 }
