@@ -237,7 +237,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	// 透传响应状态码
 	c.Status(resp.StatusCode)
 
-	// 透传响应头，但需要处理Content-Length以避免流式响应问题
+	// 透传所有响应头，但需要处理Content-Length以避免流式响应问题
 	for name, values := range resp.Header {
 		// 跳过Content-Length，让Gin自动处理流式响应
 		if strings.ToLower(name) == "content-length" {
@@ -249,7 +249,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	}
 
 	if resp.StatusCode < 400 {
-		// 确保设置正确的流式响应头
+		// 成功响应：确保设置正确的流式响应头
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		if c.Writer.Header().Get("Content-Type") == "" {
@@ -452,6 +452,12 @@ func TestsHandleClaudeRequest(account *model.Account) (int, string) {
 	}
 	defer common.CloseIO(resp.Body)
 
+	// 打印响应内容
+	if resp.StatusCode >= 400 {
+		responseBody, _ := io.ReadAll(resp.Body)
+		log.Println("Response Status:", resp.Status)
+		log.Println("Response body:", string(responseBody))
+	}
 	return resp.StatusCode, ""
 }
 
