@@ -687,3 +687,477 @@ func GetCompleteStats(req *StatsQueryRequest) (*StatsResponse, error) {
 		TrendData: trendData,
 	}, nil
 }
+
+// DashboardStats 仪表盘统计数据
+type DashboardStats struct {
+	// 顶部面板数据
+	TotalCost   float64 `json:"total_cost"`    // 总费用(USD)
+	TotalTokens int64   `json:"total_tokens"`  // 总Tokens
+	UserCount   int64   `json:"user_count"`    // 用户数量
+	ApiKeyCount int64   `json:"api_key_count"` // API Key数量
+
+	// 趋势数据
+	TrendData []TrendDataItem `json:"trend_data"` // 使用趋势
+
+	// 模型使用分布
+	ModelStats []ModelUsageItem `json:"model_stats"` // 模型使用统计
+
+	// 账号排名
+	AccountRanking []AccountRankItem `json:"account_ranking"` // 账号排名
+
+	// API Key排名
+	ApiKeyRanking []ApiKeyRankItem `json:"api_key_ranking"` // API Key排名
+
+	// 今日vs昨日数据对比
+	TodayStats     *DayStatsItem `json:"today_stats"`     // 今日统计
+	YesterdayStats *DayStatsItem `json:"yesterday_stats"` // 昨日统计
+}
+
+// ModelUsageItem 模型使用统计项
+type ModelUsageItem struct {
+	ModelName string  `json:"model_name"` // 模型名称
+	Requests  int64   `json:"requests"`   // 请求数
+	Tokens    int64   `json:"tokens"`     // tokens数
+	Cost      float64 `json:"cost"`       // 费用
+}
+
+// AccountRankItem 账号排名项
+type AccountRankItem struct {
+	AccountID    uint    `json:"account_id"`    // 账号ID
+	AccountName  string  `json:"account_name"`  // 账号名称
+	PlatformType string  `json:"platform_type"` // 平台类型
+	Requests     int64   `json:"requests"`      // 请求数
+	Tokens       int64   `json:"tokens"`        // tokens数
+	Cost         float64 `json:"cost"`          // 费用
+	GrowthRate   float64 `json:"growth_rate"`   // 增长率(%)
+}
+
+// ApiKeyRankItem API Key排名项
+type ApiKeyRankItem struct {
+	ApiKeyID   uint    `json:"api_key_id"`   // API Key ID
+	ApiKeyName string  `json:"api_key_name"` // API Key名称
+	Requests   int64   `json:"requests"`     // 请求数
+	Tokens     int64   `json:"tokens"`       // tokens数
+	Cost       float64 `json:"cost"`         // 费用
+	GrowthRate float64 `json:"growth_rate"`  // 增长率(%)
+}
+
+// DayStatsItem 每日统计项
+type DayStatsItem struct {
+	Date     string  `json:"date"`     // 日期
+	Requests int64   `json:"requests"` // 请求数
+	Tokens   int64   `json:"tokens"`   // tokens数
+	Cost     float64 `json:"cost"`     // 费用
+}
+
+// GetDashboardStats 获取仪表盘统计数据
+func GetDashboardStats() (*DashboardStats, error) {
+	stats := &DashboardStats{}
+
+	// 获取基础统计数据
+	baseStats, err := getBaseStats()
+	if err != nil {
+		return nil, err
+	}
+
+	stats.TotalCost = baseStats.TotalCost
+	stats.TotalTokens = baseStats.TotalTokens
+	stats.UserCount = baseStats.UserCount
+	stats.ApiKeyCount = baseStats.ApiKeyCount
+
+	// 获取趋势数据(最近30天)
+	trendData, err := getRecentTrendData(30)
+	if err != nil {
+		return nil, err
+	}
+	stats.TrendData = trendData
+
+	// 获取模型使用统计
+	modelStats, err := getModelUsageStats()
+	if err != nil {
+		return nil, err
+	}
+	stats.ModelStats = modelStats
+
+	// 获取账号排名(按费用排序，取前10名)
+	accountRanking, err := getAccountRanking(10)
+	if err != nil {
+		return nil, err
+	}
+	stats.AccountRanking = accountRanking
+
+	// 获取API Key排名(按使用次数排序，取前10名)
+	apiKeyRanking, err := getApiKeyRanking(10)
+	if err != nil {
+		return nil, err
+	}
+	stats.ApiKeyRanking = apiKeyRanking
+
+	// 获取今日vs昨日对比
+	todayStats, yesterdayStats, err := getDayComparison()
+	if err != nil {
+		return nil, err
+	}
+	stats.TodayStats = todayStats
+	stats.YesterdayStats = yesterdayStats
+
+	return stats, nil
+}
+
+// getBaseStats 获取基础统计数据
+func getBaseStats() (*struct {
+	TotalCost   float64
+	TotalTokens int64
+	UserCount   int64
+	ApiKeyCount int64
+}, error) {
+	var result struct {
+		TotalCost   float64
+		TotalTokens int64
+	}
+
+	// 查询总费用和总tokens
+	err := DB.Model(&Log{}).Select(
+		"SUM(total_cost) as total_cost",
+		"SUM(input_tokens + output_tokens + cache_read_input_tokens + cache_creation_input_tokens) as total_tokens",
+	).Scan(&result).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询用户数量
+	var userCount int64
+	err = DB.Model(&User{}).Count(&userCount).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询API Key数量
+	var apiKeyCount int64
+	err = DB.Model(&ApiKey{}).Count(&apiKeyCount).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &struct {
+		TotalCost   float64
+		TotalTokens int64
+		UserCount   int64
+		ApiKeyCount int64
+	}{
+		TotalCost:   result.TotalCost,
+		TotalTokens: result.TotalTokens,
+		UserCount:   userCount,
+		ApiKeyCount: apiKeyCount,
+	}, nil
+}
+
+// getRecentTrendData 获取最近N天的趋势数据
+func getRecentTrendData(days int) ([]TrendDataItem, error) {
+	now := time.Now()
+	startTime := time.Date(now.Year(), now.Month(), now.Day()-days, 0, 0, 0, 0, now.Location())
+	endTime := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+
+	rows, err := DB.Model(&Log{}).Select(
+		"DATE(created_at) as date_group",
+		"COUNT(*) as requests",
+		"SUM(input_tokens + output_tokens + cache_read_input_tokens + cache_creation_input_tokens) as tokens",
+		"SUM(total_cost) as cost",
+		"AVG(duration) as avg_duration",
+		"SUM(cache_read_input_tokens + cache_creation_input_tokens) as cache_tokens",
+		"SUM(input_tokens) as input_tokens",
+		"SUM(output_tokens) as output_tokens",
+	).Where("created_at >= ? AND created_at <= ?", startTime, endTime).
+		Group("DATE(created_at)").Order("DATE(created_at)").Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var trendData []TrendDataItem
+	for rows.Next() {
+		var item TrendDataItem
+		var dateGroup string
+		err := rows.Scan(
+			&dateGroup,
+			&item.Requests,
+			&item.Tokens,
+			&item.Cost,
+			&item.AvgDuration,
+			&item.CacheTokens,
+			&item.InputTokens,
+			&item.OutputTokens,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		item.Date = dateGroup
+		trendData = append(trendData, item)
+	}
+
+	return trendData, nil
+}
+
+// getModelUsageStats 获取模型使用统计
+func getModelUsageStats() ([]ModelUsageItem, error) {
+	var modelStats []ModelUsageItem
+
+	rows, err := DB.Model(&Log{}).Select(
+		"model_name",
+		"COUNT(*) as requests",
+		"SUM(input_tokens + output_tokens + cache_read_input_tokens + cache_creation_input_tokens) as tokens",
+		"SUM(total_cost) as cost",
+	).Group("model_name").Order("cost DESC").Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item ModelUsageItem
+		err := rows.Scan(
+			&item.ModelName,
+			&item.Requests,
+			&item.Tokens,
+			&item.Cost,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		modelStats = append(modelStats, item)
+	}
+
+	return modelStats, nil
+}
+
+// getAccountRanking 获取账号排名
+func getAccountRanking(limit int) ([]AccountRankItem, error) {
+	var ranking []AccountRankItem
+
+	// 获取当前周期数据
+	now := time.Now()
+	currentStart := time.Date(now.Year(), now.Month(), now.Day()-7, 0, 0, 0, 0, now.Location())
+	currentEnd := now
+
+	// 获取上个周期数据
+	prevStart := time.Date(now.Year(), now.Month(), now.Day()-14, 0, 0, 0, 0, now.Location())
+	prevEnd := currentStart
+
+	rows, err := DB.Table("logs l").
+		Select(`
+			l.account_id,
+			COALESCE(a.name, '') as account_name,
+			COALESCE(a.platform_type, '') as platform_type,
+			COUNT(*) as requests,
+			SUM(l.input_tokens + l.output_tokens + l.cache_read_input_tokens + l.cache_creation_input_tokens) as tokens,
+			SUM(l.total_cost) as cost
+		`).
+		Joins("LEFT JOIN accounts a ON l.account_id = a.id").
+		Where("l.created_at >= ? AND l.created_at <= ?", currentStart, currentEnd).
+		Group("l.account_id, a.name, a.platform_type").
+		Order("cost DESC").
+		Limit(limit).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item AccountRankItem
+		err := rows.Scan(
+			&item.AccountID,
+			&item.AccountName,
+			&item.PlatformType,
+			&item.Requests,
+			&item.Tokens,
+			&item.Cost,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 计算增长率
+		growthRate, _ := calculateAccountGrowthRate(item.AccountID, prevStart, prevEnd, currentStart, currentEnd)
+		item.GrowthRate = growthRate
+
+		ranking = append(ranking, item)
+	}
+
+	return ranking, nil
+}
+
+// getApiKeyRanking 获取API Key排名
+func getApiKeyRanking(limit int) ([]ApiKeyRankItem, error) {
+	var ranking []ApiKeyRankItem
+
+	// 获取当前周期数据
+	now := time.Now()
+	currentStart := time.Date(now.Year(), now.Month(), now.Day()-7, 0, 0, 0, 0, now.Location())
+	currentEnd := now
+
+	// 获取上个周期数据
+	prevStart := time.Date(now.Year(), now.Month(), now.Day()-14, 0, 0, 0, 0, now.Location())
+	prevEnd := currentStart
+
+	rows, err := DB.Table("logs l").
+		Select(`
+			l.api_key_id,
+			COALESCE(ak.name, '') as api_key_name,
+			COUNT(*) as requests,
+			SUM(l.input_tokens + l.output_tokens + l.cache_read_input_tokens + l.cache_creation_input_tokens) as tokens,
+			SUM(l.total_cost) as cost
+		`).
+		Joins("LEFT JOIN api_keys ak ON l.api_key_id = ak.id").
+		Where("l.created_at >= ? AND l.created_at <= ?", currentStart, currentEnd).
+		Group("l.api_key_id, ak.name").
+		Order("requests DESC").
+		Limit(limit).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item ApiKeyRankItem
+		err := rows.Scan(
+			&item.ApiKeyID,
+			&item.ApiKeyName,
+			&item.Requests,
+			&item.Tokens,
+			&item.Cost,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 计算增长率
+		growthRate, _ := calculateApiKeyGrowthRate(item.ApiKeyID, prevStart, prevEnd, currentStart, currentEnd)
+		item.GrowthRate = growthRate
+
+		ranking = append(ranking, item)
+	}
+
+	return ranking, nil
+}
+
+// getDayComparison 获取今日vs昨日对比数据
+func getDayComparison() (*DayStatsItem, *DayStatsItem, error) {
+	now := time.Now()
+
+	// 今日数据
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	todayEnd := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+
+	// 昨日数据
+	yesterday := now.AddDate(0, 0, -1)
+	yesterdayStart := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, yesterday.Location())
+	yesterdayEnd := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 23, 59, 59, 999999999, yesterday.Location())
+
+	// 查询今日数据
+	todayStats, err := getDayStats(todayStart, todayEnd, "今日")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 查询昨日数据
+	yesterdayStats, err := getDayStats(yesterdayStart, yesterdayEnd, "昨日")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return todayStats, yesterdayStats, nil
+}
+
+// getDayStats 获取指定日期的统计数据
+func getDayStats(startTime, endTime time.Time, label string) (*DayStatsItem, error) {
+	var result struct {
+		Requests int64
+		Tokens   int64
+		Cost     float64
+	}
+
+	err := DB.Model(&Log{}).Select(
+		"COUNT(*) as requests",
+		"SUM(input_tokens + output_tokens + cache_read_input_tokens + cache_creation_input_tokens) as tokens",
+		"SUM(total_cost) as cost",
+	).Where("created_at >= ? AND created_at <= ?", startTime, endTime).Scan(&result).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &DayStatsItem{
+		Date:     label,
+		Requests: result.Requests,
+		Tokens:   result.Tokens,
+		Cost:     result.Cost,
+	}, nil
+}
+
+// calculateAccountGrowthRate 计算账号增长率
+func calculateAccountGrowthRate(accountID uint, prevStart, prevEnd, currentStart, currentEnd time.Time) (float64, error) {
+	var prevCost, currentCost float64
+
+	// 上期费用
+	err := DB.Model(&Log{}).Select("SUM(total_cost)").
+		Where("account_id = ? AND created_at >= ? AND created_at <= ?", accountID, prevStart, prevEnd).
+		Scan(&prevCost).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// 本期费用
+	err = DB.Model(&Log{}).Select("SUM(total_cost)").
+		Where("account_id = ? AND created_at >= ? AND created_at <= ?", accountID, currentStart, currentEnd).
+		Scan(&currentCost).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// 计算增长率
+	if prevCost == 0 {
+		if currentCost > 0 {
+			return 100.0, nil // 新增用户，增长100%
+		}
+		return 0, nil
+	}
+
+	return ((currentCost - prevCost) / prevCost) * 100, nil
+}
+
+// calculateApiKeyGrowthRate 计算API Key增长率
+func calculateApiKeyGrowthRate(apiKeyID uint, prevStart, prevEnd, currentStart, currentEnd time.Time) (float64, error) {
+	var prevRequests, currentRequests int64
+
+	// 上期请求数
+	err := DB.Model(&Log{}).Select("COUNT(*)").
+		Where("api_key_id = ? AND created_at >= ? AND created_at <= ?", apiKeyID, prevStart, prevEnd).
+		Scan(&prevRequests).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// 本期请求数
+	err = DB.Model(&Log{}).Select("COUNT(*)").
+		Where("api_key_id = ? AND created_at >= ? AND created_at <= ?", apiKeyID, currentStart, currentEnd).
+		Scan(&currentRequests).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// 计算增长率
+	if prevRequests == 0 {
+		if currentRequests > 0 {
+			return 100.0, nil // 新增API Key，增长100%
+		}
+		return 0, nil
+	}
+
+	return (float64(currentRequests-prevRequests) / float64(prevRequests)) * 100, nil
+}

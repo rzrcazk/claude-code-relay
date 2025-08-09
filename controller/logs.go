@@ -371,6 +371,25 @@ func GetMyUsageStats(c *gin.Context) {
 	})
 }
 
+// GetDashboardStats 获取仪表盘统计数据
+func GetDashboardStats(c *gin.Context) {
+	logService := service.NewLogService()
+	result, err := logService.GetDashboardStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取仪表盘统计数据失败: " + err.Error(),
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取仪表盘统计数据成功",
+		"code":    constant.Success,
+		"data":    result,
+	})
+}
+
 // buildLogFilters 构建日志查询过滤条件
 func buildLogFilters(req *LogQueryRequest) *model.LogFilters {
 	filters := &model.LogFilters{}

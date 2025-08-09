@@ -100,6 +100,9 @@ func SetAPIRouter(server *gin.Engine) {
 				logs.GET("/detail/:id", controller.GetLogById)          // 获取日志详情
 			}
 
+			// 仪表盘数据接口
+			authenticated.GET("/dashboard/stats", controller.GetDashboardStats) // 获取仪表盘统计数据
+
 			// 管理员接口
 			admin := authenticated.Group("/admin")
 			admin.Use(middleware.AdminAuth())
