@@ -94,9 +94,10 @@ func SetAPIRouter(server *gin.Engine) {
 			// 日志相关（用户接口）
 			logs := authenticated.Group("/logs")
 			{
-				logs.GET("/my", controller.GetMyLogs)           // 获取当前用户的日志记录
-				logs.GET("/stats/my", controller.GetMyLogStats) // 获取当前用户的日志统计
-				logs.GET("/detail/:id", controller.GetLogById)  // 获取日志详情
+				logs.GET("/my", controller.GetMyLogs)                   // 获取当前用户的日志记录
+				logs.GET("/stats/my", controller.GetMyLogStats)         // 获取当前用户的日志统计
+				logs.GET("/usage-stats/my", controller.GetMyUsageStats) // 获取当前用户的使用统计
+				logs.GET("/detail/:id", controller.GetLogById)          // 获取日志详情
 			}
 
 			// 管理员接口
@@ -114,6 +115,7 @@ func SetAPIRouter(server *gin.Engine) {
 				{
 					adminLogs.GET("/list", controller.GetLogs)                 // 获取所有日志列表（支持筛选）
 					adminLogs.GET("/stats", controller.GetLogStats)            // 获取日志统计（支持指定用户）
+					adminLogs.GET("/usage-stats", controller.GetUsageStats)    // 获取使用统计（管理员可查看所有用户）
 					adminLogs.GET("/detail/:id", controller.GetLogById)        // 获取日志详情
 					adminLogs.DELETE("/delete/:id", controller.DeleteLogById)  // 删除指定日志
 					adminLogs.DELETE("/cleanup", controller.DeleteExpiredLogs) // 删除过期日志

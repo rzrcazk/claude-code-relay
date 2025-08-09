@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"claude-code-relay/common"
 	"claude-code-relay/constant"
 	"claude-code-relay/model"
 	"claude-code-relay/service"
@@ -262,6 +263,111 @@ func DeleteExpiredLogs(c *gin.Context) {
 		"data": gin.H{
 			"deleted_count": deletedCount,
 		},
+	})
+}
+
+// GetUsageStats 获取使用统计数据
+func GetUsageStats(c *gin.Context) {
+	var req model.StatsQueryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "查询参数错误: " + err.Error(),
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	// 不再需要period和days参数验证
+
+	// 解析时间参数
+	if startTimeStr := c.Query("start_time"); startTimeStr != "" {
+		if startTime, err := time.Parse("2006-01-02 15:04:05", startTimeStr); err == nil {
+			req.StartTime = &startTime
+		} else {
+			common.SysLog("解析开始时间失败: " + err.Error() + ", 时间字符串: " + startTimeStr)
+		}
+	}
+
+	if endTimeStr := c.Query("end_time"); endTimeStr != "" {
+		if endTime, err := time.Parse("2006-01-02 15:04:05", endTimeStr); err == nil {
+			req.EndTime = &endTime
+		} else {
+			common.SysLog("解析结束时间失败: " + err.Error() + ", 时间字符串: " + endTimeStr)
+		}
+	}
+
+	// 权限检查：非管理员只能查看自己的统计
+	user := c.MustGet("user").(*model.User)
+	if user.Role != "admin" {
+		req.UserID = &user.ID
+	}
+
+	logService := service.NewLogService()
+	result, err := logService.GetCompleteStats(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取使用统计失败: " + err.Error(),
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取使用统计成功",
+		"code":    constant.Success,
+		"data":    result,
+	})
+}
+
+// GetMyUsageStats 获取我的使用统计数据
+func GetMyUsageStats(c *gin.Context) {
+	user := c.MustGet("user").(*model.User)
+
+	var req model.StatsQueryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "查询参数错误: " + err.Error(),
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	// 强制设置为当前用户
+	req.UserID = &user.ID
+
+	// 不再需要period和days参数验证
+
+	// 解析时间参数
+	if startTimeStr := c.Query("start_time"); startTimeStr != "" {
+		if startTime, err := time.Parse("2006-01-02 15:04:05", startTimeStr); err == nil {
+			req.StartTime = &startTime
+		} else {
+			common.SysLog("解析开始时间失败: " + err.Error() + ", 时间字符串: " + startTimeStr)
+		}
+	}
+
+	if endTimeStr := c.Query("end_time"); endTimeStr != "" {
+		if endTime, err := time.Parse("2006-01-02 15:04:05", endTimeStr); err == nil {
+			req.EndTime = &endTime
+		} else {
+			common.SysLog("解析结束时间失败: " + err.Error() + ", 时间字符串: " + endTimeStr)
+		}
+	}
+
+	logService := service.NewLogService()
+	result, err := logService.GetCompleteStats(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取我的使用统计失败: " + err.Error(),
+			"code":  constant.InternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "获取我的使用统计成功",
+		"code":    constant.Success,
+		"data":    result,
 	})
 }
 

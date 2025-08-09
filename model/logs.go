@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strconv"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Log 日志记录表 - 记录Claude Code调用的详细日志
@@ -67,6 +69,54 @@ type LogStatsResult struct {
 	AvgDuration    float64 `json:"avg_duration"`
 	StreamRequests int64   `json:"stream_requests"`
 	StreamPercent  float64 `json:"stream_percent"`
+}
+
+// DetailedStatsResult 详细统计结果
+type DetailedStatsResult struct {
+	TotalRequests            int64   `json:"total_requests"`              // 总请求数
+	TotalInputTokens         int64   `json:"total_input_tokens"`          // 总输入tokens
+	TotalOutputTokens        int64   `json:"total_output_tokens"`         // 总输出tokens
+	TotalCacheReadTokens     int64   `json:"total_cache_read_tokens"`     // 总缓存读取tokens
+	TotalCacheCreationTokens int64   `json:"total_cache_creation_tokens"` // 总缓存创建tokens
+	TotalTokens              int64   `json:"total_tokens"`                // 总tokens数
+	TotalCost                float64 `json:"total_cost"`                  // 总费用
+	InputCost                float64 `json:"input_cost"`                  // 输入费用
+	OutputCost               float64 `json:"output_cost"`                 // 输出费用
+	CacheWriteCost           float64 `json:"cache_write_cost"`            // 缓存写入费用
+	CacheReadCost            float64 `json:"cache_read_cost"`             // 缓存读取费用
+	AvgDuration              float64 `json:"avg_duration"`                // 平均响应时间
+	StreamRequests           int64   `json:"stream_requests"`             // 流式请求数
+	StreamPercent            float64 `json:"stream_percent"`              // 流式请求比例
+}
+
+// StatsQueryRequest 统计查询请求
+type StatsQueryRequest struct {
+	UserID        *uint      `form:"user_id"`        // 用户ID筛选
+	AccountID     *uint      `form:"-"`              // 账号ID筛选(内部转换后使用)
+	ApiKeyID      *uint      `form:"-"`              // API Key ID筛选(内部转换后使用)
+	AccountFilter string     `form:"account_filter"` // 账号筛选（ID或邮箱/名称）
+	ApiKeyFilter  string     `form:"api_key_filter"` // API Key筛选（ID或秘钥值）
+	ModelName     string     `form:"model_name"`     // 模型名称筛选
+	StartTime     *time.Time `form:"-"`              // 开始时间(不从form绑定)
+	EndTime       *time.Time `form:"-"`              // 结束时间(不从form绑定)
+}
+
+// TrendDataItem 趋势数据项
+type TrendDataItem struct {
+	Date         string  `json:"date"`          // 日期
+	Requests     int64   `json:"requests"`      // 请求数
+	Tokens       int64   `json:"tokens"`        // tokens数
+	Cost         float64 `json:"cost"`          // 费用
+	AvgDuration  float64 `json:"avg_duration"`  // 平均响应时间
+	CacheTokens  int64   `json:"cache_tokens"`  // 缓存tokens
+	InputTokens  int64   `json:"input_tokens"`  // 输入tokens
+	OutputTokens int64   `json:"output_tokens"` // 输出tokens
+}
+
+// StatsResponse 统计响应结果
+type StatsResponse struct {
+	Summary   *DetailedStatsResult `json:"summary"`    // 汇总统计
+	TrendData []TrendDataItem      `json:"trend_data"` // 趋势数据
 }
 
 // LogFilters 日志查询过滤条件
@@ -395,4 +445,245 @@ func DeleteExpiredLogs(months int) (int64, error) {
 	}
 
 	return result.RowsAffected, nil
+}
+
+// GetDetailedStats 获取详细统计数据
+func GetDetailedStats(req *StatsQueryRequest) (*DetailedStatsResult, error) {
+	var stats DetailedStatsResult
+
+	// 构建基础查询
+	query := DB.Model(&Log{})
+
+	// 应用过滤条件
+	query = applyStatsFilters(query, req)
+
+	// 计算时间范围
+	startTime, endTime := calculateTimeRange(req)
+	query = query.Where("created_at >= ? AND created_at <= ?", startTime, endTime)
+
+	// 查询统计数据
+	var result struct {
+		TotalRequests            int64
+		TotalInputTokens         int64
+		TotalOutputTokens        int64
+		TotalCacheReadTokens     int64
+		TotalCacheCreationTokens int64
+		TotalCost                float64
+		InputCost                float64
+		OutputCost               float64
+		CacheWriteCost           float64
+		CacheReadCost            float64
+		AvgDuration              float64
+		StreamRequests           int64
+	}
+
+	err := query.Select(
+		"COUNT(*) as total_requests",
+		"SUM(input_tokens) as total_input_tokens",
+		"SUM(output_tokens) as total_output_tokens",
+		"SUM(cache_read_input_tokens) as total_cache_read_tokens",
+		"SUM(cache_creation_input_tokens) as total_cache_creation_tokens",
+		"SUM(total_cost) as total_cost",
+		"SUM(input_cost) as input_cost",
+		"SUM(output_cost) as output_cost",
+		"SUM(cache_write_cost) as cache_write_cost",
+		"SUM(cache_read_cost) as cache_read_cost",
+		"AVG(duration) as avg_duration",
+		"SUM(CASE WHEN is_stream = true THEN 1 ELSE 0 END) as stream_requests",
+	).Scan(&result).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 填充结果
+	stats.TotalRequests = result.TotalRequests
+	stats.TotalInputTokens = result.TotalInputTokens
+	stats.TotalOutputTokens = result.TotalOutputTokens
+	stats.TotalCacheReadTokens = result.TotalCacheReadTokens
+	stats.TotalCacheCreationTokens = result.TotalCacheCreationTokens
+	stats.TotalTokens = result.TotalInputTokens + result.TotalOutputTokens + result.TotalCacheReadTokens + result.TotalCacheCreationTokens
+	stats.TotalCost = result.TotalCost
+	stats.InputCost = result.InputCost
+	stats.OutputCost = result.OutputCost
+	stats.CacheWriteCost = result.CacheWriteCost
+	stats.CacheReadCost = result.CacheReadCost
+	stats.AvgDuration = result.AvgDuration
+	stats.StreamRequests = result.StreamRequests
+
+	// 计算流式请求比例
+	if stats.TotalRequests > 0 {
+		stats.StreamPercent = float64(stats.StreamRequests) / float64(stats.TotalRequests) * 100
+	}
+
+	return &stats, nil
+}
+
+// GetTrendData 获取趋势数据
+func GetTrendData(req *StatsQueryRequest) ([]TrendDataItem, error) {
+	// 构建基础查询
+	query := DB.Model(&Log{})
+
+	// 应用过滤条件
+	query = applyStatsFilters(query, req)
+
+	// 计算时间范围
+	startTime, endTime := calculateTimeRange(req)
+	query = query.Where("created_at >= ? AND created_at <= ?", startTime, endTime)
+
+	// 根据时间范围自动选择分组方式
+	var groupBy string
+
+	// 计算时间跨度（天数）
+	daysDiff := int(endTime.Sub(startTime).Hours() / 24)
+
+	if daysDiff <= 7 {
+		// 7天以内：按天分组
+		groupBy = "DATE(created_at)"
+	} else if daysDiff <= 60 {
+		// 60天以内：按天分组
+		groupBy = "DATE(created_at)"
+	} else {
+		// 60天以上：按月分组
+		groupBy = "DATE_FORMAT(created_at, '%Y-%m')"
+	}
+
+	var trendData []TrendDataItem
+
+	rows, err := query.Select(
+		groupBy+" as date_group",
+		"COUNT(*) as requests",
+		"SUM(input_tokens + output_tokens + cache_read_input_tokens + cache_creation_input_tokens) as tokens",
+		"SUM(total_cost) as cost",
+		"AVG(duration) as avg_duration",
+		"SUM(cache_read_input_tokens + cache_creation_input_tokens) as cache_tokens",
+		"SUM(input_tokens) as input_tokens",
+		"SUM(output_tokens) as output_tokens",
+	).Group(groupBy).Order(groupBy).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item TrendDataItem
+		var dateGroup string
+		err := rows.Scan(
+			&dateGroup,
+			&item.Requests,
+			&item.Tokens,
+			&item.Cost,
+			&item.AvgDuration,
+			&item.CacheTokens,
+			&item.InputTokens,
+			&item.OutputTokens,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 格式化日期显示
+		item.Date = dateGroup
+
+		trendData = append(trendData, item)
+	}
+
+	return trendData, nil
+}
+
+// applyStatsFilters 应用统计查询过滤条件
+func applyStatsFilters(query *gorm.DB, req *StatsQueryRequest) *gorm.DB {
+	if req.UserID != nil {
+		query = query.Where("user_id = ?", *req.UserID)
+	}
+	if req.AccountID != nil {
+		query = query.Where("account_id = ?", *req.AccountID)
+	}
+	if req.ApiKeyID != nil {
+		query = query.Where("api_key_id = ?", *req.ApiKeyID)
+	}
+	if req.ModelName != "" {
+		query = query.Where("model_name = ?", req.ModelName)
+	}
+	return query
+}
+
+// calculateTimeRange 计算时间范围
+func calculateTimeRange(req *StatsQueryRequest) (time.Time, time.Time) {
+	// 如果提供了具体的开始和结束时间，直接使用（时间区间选择器）
+	if req.StartTime != nil && req.EndTime != nil {
+		return *req.StartTime, *req.EndTime
+	}
+
+	// 否则显示当天数据（无时间区间选择时的默认行为）
+	now := time.Now()
+	startTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endTime := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
+
+	return startTime, endTime
+}
+
+// resolveFilters 解析筛选条件，将字符串筛选转换为ID筛选
+func resolveFilters(req *StatsQueryRequest) error {
+	// 解析账号筛选
+	if req.AccountFilter != "" {
+		// 先尝试作为ID解析
+		if accountID, err := strconv.ParseUint(req.AccountFilter, 10, 32); err == nil {
+			id := uint(accountID)
+			req.AccountID = &id
+		} else {
+			// 作为邮箱或名称查询
+			var account Account
+			err := DB.Where("email = ? OR name = ?", req.AccountFilter, req.AccountFilter).First(&account).Error
+			if err == nil {
+				req.AccountID = &account.ID
+			}
+			// 如果找不到账号，不报错，只是不会匹配到任何记录
+		}
+	}
+
+	// 解析API Key筛选
+	if req.ApiKeyFilter != "" {
+		// 先尝试作为ID解析
+		if apiKeyID, err := strconv.ParseUint(req.ApiKeyFilter, 10, 32); err == nil {
+			id := uint(apiKeyID)
+			req.ApiKeyID = &id
+		} else {
+			// 作为秘钥值查询（通过key字段）
+			var apiKey ApiKey
+			err := DB.Where("`key` = ?", req.ApiKeyFilter).First(&apiKey).Error
+			if err == nil {
+				req.ApiKeyID = &apiKey.ID
+			}
+			// 如果找不到API Key，不报错，只是不会匹配到任何记录
+		}
+	}
+
+	return nil
+}
+
+// GetCompleteStats 获取完整统计数据（汇总+趋势）
+func GetCompleteStats(req *StatsQueryRequest) (*StatsResponse, error) {
+	// 先解析筛选条件
+	if err := resolveFilters(req); err != nil {
+		return nil, err
+	}
+
+	// 获取汇总统计
+	summary, err := GetDetailedStats(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取趋势数据
+	trendData, err := GetTrendData(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StatsResponse{
+		Summary:   summary,
+		TrendData: trendData,
+	}, nil
 }
