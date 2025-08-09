@@ -24,17 +24,6 @@
               <t-option v-for="model in modelOptions" :key="model" :value="model" :label="model" />
             </t-select>
 
-            <t-select
-              v-model="searchFilters.is_stream"
-              placeholder="请求类型"
-              clearable
-              style="width: 120px"
-              @change="handleSearch"
-            >
-              <t-option :value="true" label="流式" />
-              <t-option :value="false" label="非流式" />
-            </t-select>
-
             <t-date-range-picker
               v-model="dateRange"
               format="YYYY-MM-DD HH:mm:ss"
@@ -143,11 +132,6 @@
               <small v-if="row.cache_write_cost > 0"> <br />缓存写: ${{ row.cache_write_cost.toFixed(4) }} </small>
             </div>
           </div>
-        </template>
-
-        <template #is_stream="{ row }">
-          <t-tag v-if="row.is_stream" theme="success" variant="light">流式</t-tag>
-          <t-tag v-else theme="default" variant="light">非流式</t-tag>
         </template>
 
         <template #duration="{ row }">
@@ -307,11 +291,6 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     title: '费用',
     colKey: 'cost',
     width: 160,
-  },
-  {
-    title: '类型',
-    colKey: 'is_stream',
-    width: 80,
   },
   {
     title: '耗时',

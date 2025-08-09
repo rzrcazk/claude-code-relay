@@ -237,7 +237,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	// 透传响应状态码
 	c.Status(resp.StatusCode)
 
-	// 透传响应头，但需要处理Content-Length以避免流式响应问题
+	// 透传所有响应头，但需要处理Content-Length以避免流式响应问题
 	for name, values := range resp.Header {
 		// 跳过Content-Length，让Gin自动处理流式响应
 		if strings.ToLower(name) == "content-length" {
@@ -249,7 +249,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 	}
 
 	if resp.StatusCode < 400 {
-		// 确保设置正确的流式响应头
+		// 成功响应：确保设置正确的流式响应头
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
 		if c.Writer.Header().Get("Content-Type") == "" {
@@ -452,6 +452,12 @@ func TestsHandleClaudeRequest(account *model.Account) (int, string) {
 	}
 	defer common.CloseIO(resp.Body)
 
+	// 打印响应内容
+	if resp.StatusCode >= 400 {
+		responseBody, _ := io.ReadAll(resp.Body)
+		log.Println("Response Status:", resp.Status)
+		log.Println("Response body:", string(responseBody))
+	}
 	return resp.StatusCode, ""
 }
 
@@ -503,6 +509,15 @@ func getValidAccessToken(account *model.Account) (string, error) {
 			if now < expiresAt {
 				log.Printf("刷新失败但token未完全过期，尝试使用当前token")
 				return account.AccessToken, nil
+			}
+
+			// token已过期且刷新失败，禁用此账号
+			log.Printf("token已过期且刷新失败，禁用账号: %s", account.Name)
+			account.CurrentStatus = 2 // 设置为禁用状态
+			if updateErr := model.UpdateAccount(account); updateErr != nil {
+				log.Printf("禁用账号失败: %v", updateErr)
+			} else {
+				log.Printf("账号 %s 已被自动禁用", account.Name)
 			}
 			return "", fmt.Errorf("token已过期且刷新失败: %v", err)
 		}

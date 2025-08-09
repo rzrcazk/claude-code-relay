@@ -16,3 +16,6 @@ declare module '*.svg' {
 }
 
 declare type Recordable<T = any> = Record<string, T>;
+
+// 全局变量声明
+declare const __APP_VERSION__: string;

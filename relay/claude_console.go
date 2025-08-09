@@ -60,6 +60,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	// 固定请求头配置，如果原请求中没有则使用固定值
 	fixedHeaders := map[string]string{
 		"x-api-key":                                 account.SecretKey,
+		"Authorization":                             "Bearer " + account.SecretKey,
 		"anthropic-version":                         "2023-06-01",
 		"X-Stainless-Retry-Count":                   "0",
 		"X-Stainless-Timeout":                       "600",
@@ -87,10 +88,6 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	for name, value := range fixedHeaders {
 		req.Header.Set(name, value)
 	}
-
-	// 删除Authorization 请求头
-	req.Header.Del("Authorization")
-	req.Header.Del("Cookie")
 
 	// 处理流式请求的Accept头
 	isStream := true

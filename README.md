@@ -24,9 +24,9 @@
 
 **前端界面** 
 - Vue 3 + TypeScript + TDesign组件库
-- 响应式管理界面，支持暗黑模式
 - 实时数据统计和可视化图表
 - 完整的权限管理和用户系统
+- 单独的API KEY的用量查询 (`/stats/api-key?api_key=sk-xxx`)
 
 ## 🏗 项目架构
 

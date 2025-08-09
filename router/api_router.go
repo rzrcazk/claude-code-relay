@@ -21,7 +21,7 @@ func SetAPIRouter(server *gin.Engine) {
 
 	// API路由组
 	api := server.Group("/api/v1")
-	api.Use(middleware.RateLimit(120, time.Minute))
+	api.Use(middleware.RateLimit(300, time.Minute))
 	{
 		// 公开接口
 		auth := api.Group("/auth")
@@ -29,6 +29,8 @@ func SetAPIRouter(server *gin.Engine) {
 			auth.POST("/login", controller.Login)
 			auth.POST("/register", controller.Register)
 			auth.POST("/send-verification-code", controller.SendVerificationCode)
+			auth.GET("/api-key", controller.GetApiKeyInfo)                    // 根据API Key查询统计信息（公开接口）
+			auth.GET("/api-key/:api_key", controller.GetApiKeyInfo)          // 支持URL路径参数方式
 		}
 
 		// 系统状态
@@ -94,10 +96,14 @@ func SetAPIRouter(server *gin.Engine) {
 			// 日志相关（用户接口）
 			logs := authenticated.Group("/logs")
 			{
-				logs.GET("/my", controller.GetMyLogs)           // 获取当前用户的日志记录
-				logs.GET("/stats/my", controller.GetMyLogStats) // 获取当前用户的日志统计
-				logs.GET("/detail/:id", controller.GetLogById)  // 获取日志详情
+				logs.GET("/my", controller.GetMyLogs)                   // 获取当前用户的日志记录
+				logs.GET("/stats/my", controller.GetMyLogStats)         // 获取当前用户的日志统计
+				logs.GET("/usage-stats/my", controller.GetMyUsageStats) // 获取当前用户的使用统计
+				logs.GET("/detail/:id", controller.GetLogById)          // 获取日志详情
 			}
+
+			// 仪表盘数据接口
+			authenticated.GET("/dashboard/stats", controller.GetDashboardStats) // 获取仪表盘统计数据
 
 			// 管理员接口
 			admin := authenticated.Group("/admin")
@@ -114,6 +120,7 @@ func SetAPIRouter(server *gin.Engine) {
 				{
 					adminLogs.GET("/list", controller.GetLogs)                 // 获取所有日志列表（支持筛选）
 					adminLogs.GET("/stats", controller.GetLogStats)            // 获取日志统计（支持指定用户）
+					adminLogs.GET("/usage-stats", controller.GetUsageStats)    // 获取使用统计（管理员可查看所有用户）
 					adminLogs.GET("/detail/:id", controller.GetLogById)        // 获取日志详情
 					adminLogs.DELETE("/delete/:id", controller.DeleteLogById)  // 删除指定日志
 					adminLogs.DELETE("/cleanup", controller.DeleteExpiredLogs) // 删除过期日志

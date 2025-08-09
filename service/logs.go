@@ -227,3 +227,43 @@ func (s *LogService) DeleteExpiredLogs(months int) (int64, error) {
 
 	return deletedCount, nil
 }
+
+// GetDetailedStats 获取详细统计数据
+func (s *LogService) GetDetailedStats(req *model.StatsQueryRequest) (*model.DetailedStatsResult, error) {
+	stats, err := model.GetDetailedStats(req)
+	if err != nil {
+		return nil, errors.New("获取详细统计失败: " + err.Error())
+	}
+
+	return stats, nil
+}
+
+// GetTrendData 获取趋势数据
+func (s *LogService) GetTrendData(req *model.StatsQueryRequest) ([]model.TrendDataItem, error) {
+	trendData, err := model.GetTrendData(req)
+	if err != nil {
+		return nil, errors.New("获取趋势数据失败: " + err.Error())
+	}
+
+	return trendData, nil
+}
+
+// GetCompleteStats 获取完整统计数据（汇总+趋势）
+func (s *LogService) GetCompleteStats(req *model.StatsQueryRequest) (*model.StatsResponse, error) {
+	result, err := model.GetCompleteStats(req)
+	if err != nil {
+		return nil, errors.New("获取完整统计数据失败: " + err.Error())
+	}
+
+	return result, nil
+}
+
+// GetDashboardStats 获取仪表盘统计数据
+func (s *LogService) GetDashboardStats() (*model.DashboardStats, error) {
+	stats, err := model.GetDashboardStats()
+	if err != nil {
+		return nil, errors.New("获取仪表盘统计数据失败: " + err.Error())
+	}
+
+	return stats, nil
+}

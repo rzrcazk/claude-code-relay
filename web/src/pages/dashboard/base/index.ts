@@ -2,13 +2,13 @@ import dayjs from 'dayjs';
 import type { EChartsOption } from 'echarts';
 
 import type { TChartColor } from '@/config/color';
-import { t } from '@/locales/index';
-import { getRandomArray } from '@/utils/charts';
 import { getChartListColor } from '@/utils/color';
 
-/** 首页 dashboard 折线图 */
-export function constructInitDashboardDataset(type: string) {
-  const dateArray: Array<string> = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+/** 首页 dashboard 小图表（使用真实趋势数据） */
+export function constructMiniChart(type: string, trendData: Array<any> = []) {
+  // 取最近7天的数据
+  const recentData = trendData.slice(-7);
+  const dateArray = recentData.map((item) => dayjs(item.date).format('MM-DD'));
 
   const datasetAxis = {
     xAxis: {
@@ -29,59 +29,41 @@ export function constructInitDashboardDataset(type: string) {
   };
 
   if (type === 'line') {
+    const costData = recentData.map((item) => item.cost);
     const lineDataset = {
       ...datasetAxis,
       color: ['#fff'],
       series: [
         {
-          data: [150, 230, 224, 218, 135, 147, 260],
+          data: costData,
           type,
           showSymbol: true,
           symbol: 'circle',
-          symbolSize: 0,
-          markPoint: {
-            data: [
-              { type: 'max', name: '最大值' },
-              { type: 'min', name: '最小值' },
-            ],
-          },
+          symbolSize: 3,
           lineStyle: {
             width: 2,
           },
+          smooth: true,
         },
       ],
     };
     return lineDataset;
   }
+
+  // bar chart - 使用tokens数据
+  const tokensData = recentData.map((item, index) => ({
+    value: item.tokens,
+    itemStyle: {
+      opacity: index >= recentData.length - 2 ? 1 : 0.6,
+    },
+  }));
+
   const barDataset = {
     ...datasetAxis,
     color: getChartListColor(),
     series: [
       {
-        data: [
-          100,
-          130,
-          184,
-          218,
-          {
-            value: 135,
-            itemStyle: {
-              opacity: 0.2,
-            },
-          },
-          {
-            value: 118,
-            itemStyle: {
-              opacity: 0.2,
-            },
-          },
-          {
-            value: 60,
-            itemStyle: {
-              opacity: 0.2,
-            },
-          },
-        ],
+        data: tokensData,
         type,
         barWidth: 9,
       },
@@ -90,137 +72,34 @@ export function constructInitDashboardDataset(type: string) {
   return barDataset;
 }
 
-/** 柱状图数据源 */
-export function constructInitDataset({
-  dateTime = [],
-  placeholderColor,
-  borderColor,
-}: { dateTime: Array<string> } & TChartColor) {
-  const divideNum = 10;
-  const timeArray = [];
-  const inArray = [];
-  const outArray = [];
-  for (let i = 0; i < divideNum; i++) {
-    if (dateTime.length > 0) {
-      const dateAbsTime: number = (new Date(dateTime[1]).getTime() - new Date(dateTime[0]).getTime()) / divideNum;
-      const enhandTime: number = new Date(dateTime[0]).getTime() + dateAbsTime * i;
-      timeArray.push(dayjs(enhandTime).format('YYYY-MM-DD'));
-    } else {
-      timeArray.push(
-        dayjs()
-          .subtract(divideNum - i, 'day')
-          .format('YYYY-MM-DD'),
-      );
-    }
-
-    inArray.push(getRandomArray().toString());
-    outArray.push(getRandomArray().toString());
-  }
-
-  const dataset = {
-    color: getChartListColor(),
-    tooltip: {
-      trigger: 'item',
-    },
-    xAxis: {
-      type: 'category',
-      data: timeArray,
-      axisLabel: {
-        color: placeholderColor,
-      },
-      axisLine: {
-        lineStyle: {
-          color: getChartListColor()[1],
-          width: 1,
-        },
-      },
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: placeholderColor,
-      },
-      splitLine: {
-        lineStyle: {
-          color: borderColor,
-        },
-      },
-    },
-    grid: {
-      top: '5%',
-      left: '25px',
-      right: 0,
-      bottom: '60px',
-    },
-    legend: {
-      icon: 'rect',
-      itemWidth: 12,
-      itemHeight: 4,
-      itemGap: 48,
-      textStyle: {
-        fontSize: 12,
-        color: placeholderColor,
-      },
-      left: 'center',
-      bottom: '0',
-      orient: 'horizontal',
-      data: [t('pages.dashboardBase.chart.thisMonth'), t('pages.dashboardBase.chart.lastMonth')],
-    },
-    series: [
-      {
-        name: t('pages.dashboardBase.chart.thisMonth'),
-        data: outArray,
-        type: 'bar',
-      },
-      {
-        name: t('pages.dashboardBase.chart.lastMonth'),
-        data: inArray,
-        type: 'bar',
-      },
-    ],
-  };
-
-  return dataset;
-}
-
 /**
- *  线性图表数据源
+ *  线性图表数据源（使用真实数据）
  *
  * @export
- * @param {Array<string>} [dateTime]
+ * @param {Array} trendData 趋势数据
  * @returns {*} dataSet
  */
 export function getLineChartDataSet({
-  dateTime = [],
+  trendData = [],
   placeholderColor,
   borderColor,
-}: { dateTime?: Array<string> } & TChartColor) {
-  const divideNum = 10;
-  const timeArray = [];
-  const inArray = [];
-  const outArray = [];
-  for (let i = 0; i < divideNum; i++) {
-    if (dateTime.length > 0) {
-      const dateAbsTime: number = (new Date(dateTime[1]).getTime() - new Date(dateTime[0]).getTime()) / divideNum;
-      const enhandTime: number = new Date(dateTime[0]).getTime() + dateAbsTime * i;
-      // console.log('dateAbsTime..', dateAbsTime, enhandTime);
-      timeArray.push(dayjs(enhandTime).format('MM-DD'));
-    } else {
-      timeArray.push(
-        dayjs()
-          .subtract(divideNum - i, 'day')
-          .format('MM-DD'),
-      );
-    }
-
-    inArray.push(getRandomArray().toString());
-    outArray.push(getRandomArray().toString());
-  }
+}: { trendData?: Array<any> } & TChartColor) {
+  const timeArray = trendData.map((item) => dayjs(item.date).format('MM-DD'));
+  const costArray = trendData.map((item) => item.cost.toFixed(2));
+  const requestsArray = trendData.map((item) => item.requests);
 
   const dataSet = {
     color: getChartListColor(),
     tooltip: {
-      trigger: 'item',
+      trigger: 'axis',
+      formatter(params: any) {
+        let result = `${params[0].axisValue}<br/>`;
+        params.forEach((param: any) => {
+          const value = param.seriesName === '费用' ? `$${param.value}` : `${param.value}次`;
+          result += `${param.marker}${param.seriesName}: ${value}<br/>`;
+        });
+        return result;
+      },
     },
     grid: {
       left: '0',
@@ -232,8 +111,8 @@ export function getLineChartDataSet({
     legend: {
       left: 'center',
       bottom: '0',
-      orient: 'horizontal', // legend 横向布局。
-      data: [t('pages.dashboardBase.chart.thisMonth'), t('pages.dashboardBase.chart.lastMonth')],
+      orient: 'horizontal',
+      data: ['费用', '请求数'],
       textStyle: {
         fontSize: 12,
         color: placeholderColor,
@@ -252,26 +131,43 @@ export function getLineChartDataSet({
         },
       },
     },
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: placeholderColor,
-      },
-      splitLine: {
-        lineStyle: {
-          color: borderColor,
+    yAxis: [
+      {
+        type: 'value',
+        name: '费用($)',
+        position: 'left',
+        axisLabel: {
+          color: placeholderColor,
+          formatter: '${value}',
+        },
+        splitLine: {
+          lineStyle: {
+            color: borderColor,
+          },
         },
       },
-    },
+      {
+        type: 'value',
+        name: '请求数',
+        position: 'right',
+        axisLabel: {
+          color: placeholderColor,
+        },
+        splitLine: {
+          show: false,
+        },
+      },
+    ],
     series: [
       {
-        name: t('pages.dashboardBase.chart.thisMonth'),
-        data: outArray,
+        name: '费用',
+        data: costArray,
         type: 'line',
-        smooth: false,
+        yAxisIndex: 0,
+        smooth: true,
         showSymbol: true,
         symbol: 'circle',
-        symbolSize: 8,
+        symbolSize: 6,
         itemStyle: {
           borderColor,
           borderWidth: 1,
@@ -281,13 +177,14 @@ export function getLineChartDataSet({
         },
       },
       {
-        name: t('pages.dashboardBase.chart.lastMonth'),
-        data: inArray,
+        name: '请求数',
+        data: requestsArray,
         type: 'line',
-        smooth: false,
+        yAxisIndex: 1,
+        smooth: true,
         showSymbol: true,
         symbol: 'circle',
-        symbolSize: 8,
+        symbolSize: 6,
         itemStyle: {
           borderColor,
           borderWidth: 1,
@@ -299,24 +196,30 @@ export function getLineChartDataSet({
 }
 
 /**
- * 获取饼图数据
+ * 获取饼图数据（使用真实模型数据）
  *
  * @export
- * @param {number} [radius]
+ * @param {Array} modelStats 模型统计数据
  * @returns {*} dataSet
  */
 export function getPieChartDataSet({
-  radius = 42,
+  modelStats = [],
   textColor,
   placeholderColor,
   containerColor,
-}: { radius?: number } & Record<string, string>): EChartsOption {
+}: { modelStats?: Array<any> } & Record<string, string>): EChartsOption {
+  const data = modelStats.map((item) => ({
+    value: item.cost,
+    name: item.model_name.replace(/^claude-/, ''), // 简化模型名称显示
+  }));
+
+  const totalCost = modelStats.reduce((sum, item) => sum + item.cost, 0);
+
   return {
     color: getChartListColor(),
     tooltip: {
-      show: false,
-      trigger: 'axis',
-      position: null,
+      trigger: 'item',
+      formatter: '{a}<br/>{b}: ${c} ({d}%)',
     },
     grid: {
       top: '0',
@@ -332,16 +235,19 @@ export function getPieChartDataSet({
       },
       left: 'center',
       bottom: '0',
-      orient: 'horizontal', // legend 横向布局。
+      orient: 'horizontal',
+      formatter(name: string) {
+        return name.length > 15 ? `${name.substring(0, 12)}...` : name;
+      },
     },
     series: [
       {
-        name: '销售渠道',
+        name: '模型费用分布',
         type: 'pie',
         radius: ['48%', '60%'],
         avoidLabelOverlap: true,
         selectedMode: true,
-        silent: true,
+        silent: false,
         itemStyle: {
           borderColor: containerColor,
           borderWidth: 1,
@@ -349,7 +255,13 @@ export function getPieChartDataSet({
         label: {
           show: true,
           position: 'center',
-          formatter: ['{value|{d}%}', '{name|{b}}'].join('\n'),
+          formatter(params: any) {
+            if (params.dataIndex === 0) {
+              const percent = ((params.value / totalCost) * 100).toFixed(1);
+              return [`{value|${percent}%}`, `{name|${params.name}}`].join('\n');
+            }
+            return '';
+          },
           rich: {
             value: {
               color: textColor,
@@ -367,7 +279,11 @@ export function getPieChartDataSet({
         emphasis: {
           scale: true,
           label: {
-            show: false,
+            show: true,
+            formatter(params: any) {
+              const percent = ((params.value / totalCost) * 100).toFixed(1);
+              return [`{value|${percent}%}`, `{name|${params.name}}`].join('\n');
+            },
             rich: {
               value: {
                 color: textColor,
@@ -386,13 +302,7 @@ export function getPieChartDataSet({
         labelLine: {
           show: false,
         },
-        data: [
-          {
-            value: 1048,
-            name: t('pages.dashboardBase.topPanel.analysis.channel1'),
-          },
-          { value: radius * 7, name: t('pages.dashboardBase.topPanel.analysis.channel2') },
-        ],
+        data,
       },
     ],
   };

@@ -4,6 +4,7 @@ import { request } from '@/utils/request';
 const Api = {
   GetMyLogs: '/api/v1/logs/my',
   GetMyStats: '/api/v1/logs/stats/my',
+  GetMyUsageStats: '/api/v1/logs/usage-stats/my',
   GetLogDetail: '/api/v1/logs/detail',
 };
 
@@ -68,6 +69,52 @@ export interface LogStatsResult {
   stream_percent: number;
 }
 
+// 统计查询参数
+export interface StatsQueryParams {
+  user_id?: number; // 用户ID筛选
+  account_filter?: string; // 账号筛选（ID或邮箱/名称）
+  api_key_filter?: string; // API Key筛选（ID或秘钥值）
+  model_name?: string; // 模型名称筛选
+  start_time?: string; // 开始时间
+  end_time?: string; // 结束时间
+}
+
+// 详细统计结果
+export interface DetailedStatsResult {
+  total_requests: number; // 总请求数
+  total_input_tokens: number; // 总输入tokens
+  total_output_tokens: number; // 总输出tokens
+  total_cache_read_tokens: number; // 总缓存读取tokens
+  total_cache_creation_tokens: number; // 总缓存创建tokens
+  total_tokens: number; // 总tokens数
+  total_cost: number; // 总费用
+  input_cost: number; // 输入费用
+  output_cost: number; // 输出费用
+  cache_write_cost: number; // 缓存写入费用
+  cache_read_cost: number; // 缓存读取费用
+  avg_duration: number; // 平均响应时间
+  stream_requests: number; // 流式请求数
+  stream_percent: number; // 流式请求比例
+}
+
+// 趋势数据项
+export interface TrendDataItem {
+  date: string; // 日期
+  requests: number; // 请求数
+  tokens: number; // tokens数
+  cost: number; // 费用
+  avg_duration: number; // 平均响应时间
+  cache_tokens: number; // 缓存tokens
+  input_tokens: number; // 输入tokens
+  output_tokens: number; // 输出tokens
+}
+
+// 统计响应结果
+export interface StatsResponse {
+  summary: DetailedStatsResult; // 汇总统计
+  trend_data: TrendDataItem[]; // 趋势数据
+}
+
 /**
  * 获取我的日志列表
  */
@@ -94,5 +141,15 @@ export function getMyLogStats(params?: Omit<LogQueryParams, 'page' | 'limit'>) {
 export function getLogDetail(id: string) {
   return request.get<Log>({
     url: `${Api.GetLogDetail}/${id}`,
+  });
+}
+
+/**
+ * 获取我的使用统计数据
+ */
+export function getMyUsageStats(params: StatsQueryParams) {
+  return request.get<StatsResponse>({
+    url: Api.GetMyUsageStats,
+    params,
   });
 }

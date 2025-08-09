@@ -18,6 +18,15 @@ const defaultRouterList: Array<RouteRecordRaw> = [
     component: () => import('@/pages/login/index.vue'),
   },
   {
+    path: '/stats/api-key',
+    name: 'ApiKeyStats',
+    component: () => import('@/pages/stats/api-key/index.vue'),
+    meta: {
+      title: 'API Key 统计查询',
+      requiresAuth: false,
+    },
+  },
+  {
     path: '/',
     redirect: '/dashboard/base',
   },

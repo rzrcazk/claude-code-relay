@@ -1,23 +1,7 @@
 <template>
   <t-row :gutter="16" class="row-container">
     <t-col :xs="12" :xl="9">
-      <t-card
-        :title="t('pages.dashboardBase.topPanel.analysis.title')"
-        :subtitle="currentMonth"
-        class="dashboard-chart-card"
-        :bordered="false"
-      >
-        <template #actions>
-          <div class="dashboard-chart-title-container">
-            <t-date-range-picker
-              class="card-date-picker-container"
-              theme="primary"
-              mode="date"
-              :default-value="LAST_7_DAYS"
-              @change="(value) => onCurrencyChange(value as string[])"
-            />
-          </div>
-        </template>
+      <t-card title="使用趋势分析" subtitle="最近30天" class="dashboard-chart-card" :bordered="false">
         <div
           id="monitorContainer"
           class="dashboard-chart-container"
@@ -26,12 +10,7 @@
       </t-card>
     </t-col>
     <t-col :xs="12" :xl="3">
-      <t-card
-        :title="t('pages.dashboardBase.topPanel.analysis.channels')"
-        :subtitle="currentMonth"
-        class="dashboard-chart-card"
-        :bordered="false"
-      >
+      <t-card title="模型使用分布" subtitle="按费用排序" class="dashboard-chart-card" :bordered="false">
         <div
           id="countContainer"
           class="dashboard-chart-container"
@@ -49,12 +28,22 @@ import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { computed, nextTick, onDeactivated, onMounted, ref, watch } from 'vue';
 
+import type { DashboardStats } from '@/api/dashboard';
 import { t } from '@/locales';
 import { useSettingStore } from '@/store';
 import { changeChartsTheme } from '@/utils/color';
 import { LAST_7_DAYS } from '@/utils/date';
 
 import { getLineChartDataSet, getPieChartDataSet } from '../index';
+
+interface Props {
+  dashboardData?: DashboardStats;
+  loading?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  loading: false,
+});
 
 echarts.use([TooltipComponent, LegendComponent, PieChart, GridComponent, LineChart, CanvasRenderer]);
 
@@ -85,7 +74,12 @@ const renderMonitorChart = () => {
     monitorContainer = document.getElementById('monitorContainer');
   }
   monitorChart = echarts.init(monitorContainer);
-  monitorChart.setOption(getLineChartDataSet({ ...chartColors.value }));
+  monitorChart.setOption(
+    getLineChartDataSet({
+      trendData: props.dashboardData?.trend_data || [],
+      ...chartColors.value,
+    }),
+  );
 };
 
 // monitorChart
@@ -96,26 +90,21 @@ const renderCountChart = () => {
     countContainer = document.getElementById('countContainer');
   }
   countChart = echarts.init(countContainer);
-  countChart.setOption(getPieChartDataSet(chartColors.value));
+  countChart.setOption(
+    getPieChartDataSet({
+      modelStats: props.dashboardData?.model_stats || [],
+      ...chartColors.value,
+    }),
+  );
 
-  // 取消之前高亮的图形
-  countChart.dispatchAction({
-    type: 'downplay',
-    seriesIndex: 0,
-    dataIndex: -1,
-  });
-  // 高亮当前图形
-  countChart.dispatchAction({
-    type: 'highlight',
-    seriesIndex: 0,
-    dataIndex: 1,
-  });
-  // 显示 tooltip
-  countChart.dispatchAction({
-    type: 'showTip',
-    seriesIndex: 0,
-    dataIndex: 1,
-  });
+  // 高亮第一个数据项（最高费用的模型）
+  if (props.dashboardData?.model_stats && props.dashboardData.model_stats.length > 0) {
+    countChart.dispatchAction({
+      type: 'highlight',
+      seriesIndex: 0,
+      dataIndex: 0,
+    });
+  }
 };
 
 const renderCharts = () => {
@@ -154,6 +143,40 @@ const { width, height } = useWindowSize();
 watch([width, height], () => {
   updateContainer();
 });
+
+// 监听数据变化，重新渲染图表
+watch(
+  () => props.dashboardData,
+  (newData) => {
+    if (newData && monitorChart && countChart) {
+      // 更新趋势图
+      monitorChart.setOption(
+        getLineChartDataSet({
+          trendData: newData.trend_data || [],
+          ...chartColors.value,
+        }),
+      );
+
+      // 更新饼图
+      countChart.setOption(
+        getPieChartDataSet({
+          modelStats: newData.model_stats || [],
+          ...chartColors.value,
+        }),
+      );
+
+      // 高亮第一个数据项
+      if (newData.model_stats && newData.model_stats.length > 0) {
+        countChart.dispatchAction({
+          type: 'highlight',
+          seriesIndex: 0,
+          dataIndex: 0,
+        });
+      }
+    }
+  },
+  { deep: true },
+);
 
 onDeactivated(() => {
   storeModeWatch();
@@ -195,11 +218,6 @@ const storeModeWatch = watch(
     renderCharts();
   },
 );
-
-const onCurrencyChange = (checkedValues: string[]) => {
-  currentMonth.value = getThisMonth(checkedValues);
-  monitorChart.setOption(getLineChartDataSet({ dateTime: checkedValues, ...chartColors.value }));
-};
 </script>
 <style lang="less" scoped>
 .dashboard-chart-card {
