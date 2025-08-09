@@ -88,9 +88,9 @@ web/
 4. **故障转移**: 自动跳过异常账号
 
 ### 技术栈
-**后端**: Go 1.21+, Gin, GORM, Redis
-**前端**: Vue 3.5+, TypeScript, TDesign, Vite 6+
-**数据库**: MySQL 8.0+
+1. **后端**: Go 1.21+, Gin, GORM, Redis  
+2. **前端**: Vue 3.5+, TypeScript, TDesign, Vite 6+  
+3. **数据库**: MySQL 8.0+  
 
 ## 💻 开发说明
 
@@ -190,13 +190,13 @@ pnpm run build
 
 ## ❓ 常见问题
 
-**Q: 如何重置管理员密码？**
+**Q: 如何重置管理员密码？**  
 A: 删除数据库中的admin用户记录，重启服务会自动重新创建默认管理员。
 
-**Q: 支持哪些Claude模型？**
+**Q: 支持哪些Claude模型？**  
 A: 支持所有Claude模型，包括Claude-3.5系列，成本计算会自动适配不同模型。
 
-**Q: 如何查看账号使用统计？**
+**Q: 如何查看账号使用统计？**  
 A: 通过前端管理界面或API接口查看详细的使用统计和成本分析。
 
 **Q: 无法正常访问Claude官方服务？**  
@@ -205,7 +205,7 @@ A: Claude等国外模型服务商禁用国内IP访问, 自行使用代理解决 
 
 ## 🤝 鸣谢
 - 灵感来源: [claude-relay-service](https://github.com/Wei-Shaw/claude-relay-service)
-- 本项目 90% 代码均由 [Claude Code](https://www.anthropic.com/claude-code) 开发完成, 感谢Anthropic提供强大的AI能力支持.
+- 本项目 **90%** 代码均由 [Claude Code](https://www.anthropic.com/claude-code) 开发完成, 感谢Anthropic提供强大的AI能力支持.
 
 ---
 
