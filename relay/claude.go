@@ -460,37 +460,7 @@ func appendErrorMessage(baseError gin.H, message string) gin.H {
 // TestsHandleClaudeRequest 用于测试的Claude请求处理函数，功能同HandleClaudeRequest但不更新日志和账号状态
 // 主要用于单元测试和集成测试，避免对数据库和日志系统的
 func TestsHandleClaudeRequest(account *model.Account) (int, string) {
-	requestBody := `{
-		"model": "claude-sonnet-4-20250514",
-		"messages": [
-			{
-				"role": "user",
-				"content": [
-					{
-						"type": "text",
-						"text": "hi"
-					}
-				]
-			}
-		],
-		"temperature": 1,
-		"system": [
-			{
-				"type": "text",
-				"text": "You are Claude Code, Anthropic's official CLI for Claude.",
-				"cache_control": {
-					"type": "ephemeral"
-				}
-			}
-		],
-		"metadata": {
-			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
-		},
-		"max_tokens": 100,
-		"stream": true
-	}`
-
-	body, _ := sjson.SetBytes([]byte(requestBody), "stream", true)
+	body, _ := sjson.SetBytes([]byte(TestRequestBody), "stream", true)
 
 	// 获取有效的访问token
 	accessToken, err := getValidAccessToken(account)

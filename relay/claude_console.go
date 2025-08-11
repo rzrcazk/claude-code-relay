@@ -312,37 +312,7 @@ func appendConsoleErrorMessage(baseError gin.H, message string) gin.H {
 
 // TestHandleClaudeConsoleRequest 测试处理Claude Console请求的函数
 func TestHandleClaudeConsoleRequest(account *model.Account) (int, string) {
-	requestBody := `{
-		"model": "claude-sonnet-4-20250514",
-		"messages": [
-			{
-				"role": "user",
-				"content": [
-					{
-						"type": "text",
-						"text": "hi"
-					}
-				]
-			}
-		],
-		"temperature": 1,
-		"system": [
-			{
-				"type": "text",
-				"text": "You are Claude Code, Anthropic's official CLI for Claude.",
-				"cache_control": {
-					"type": "ephemeral"
-				}
-			}
-		],
-		"metadata": {
-			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
-		},
-		"max_tokens": 64000,
-		"stream": true
-	}`
-
-	body, _ := sjson.SetBytes([]byte(requestBody), "stream", true)
+	body, _ := sjson.SetBytes([]byte(TestRequestBody), "stream", true)
 
 	req, err := http.NewRequest("POST", account.RequestURL+"/v1/messages?beta=true", bytes.NewBuffer(body))
 	if err != nil {

@@ -1075,35 +1075,7 @@ func (st *StreamTransformer) sendFinalEvents(writer gin.ResponseWriter) {
 
 // TestHandleOpenAIRequest 仅用于单元测试，返回状态码和响应内容
 func TestHandleOpenAIRequest(account *model.Account) (int, string) {
-	requestBody := `{
-		"model": "claude-sonnet-4-20250514",
-		"messages": [
-			{
-				"role": "user",
-				"content": [
-					{
-						"type": "text",
-						"text": "hi"
-					}
-				]
-			}
-		],
-		"temperature": 1,
-		"system": [
-			{
-				"type": "text",
-				"text": "You are Claude Code, Anthropic's official CLI for Claude.",
-				"cache_control": {
-					"type": "ephemeral"
-				}
-			}
-		],
-		"metadata": {
-			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
-		},
-		"max_tokens": 100,
-		"stream": true
-	}`
+	requestBody := GetTestRequestBody(100)
 
 	// 解析Claude请求
 	var claudeReq ClaudeRequest
