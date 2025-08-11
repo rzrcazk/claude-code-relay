@@ -299,14 +299,8 @@ func HandleOpenAIRequest(c *gin.Context, account *model.Account) {
 		return
 	}
 
-	// 处理流式或非流式响应
-	if claudeReq.Stream {
-		// 流式响应处理
-		handleStreamingResponse(c, resp, claudeReq.Model, account, apiKey, startTime)
-	} else {
-		// 非流式响应处理
-		handleNonStreamingResponse(c, resp, claudeReq.Model, account, apiKey, startTime)
-	}
+	// 统一使用流式响应处理（传递原始Claude模型名称，用于日志记录）
+	handleStreamingResponse(c, resp, claudeReq.Model, claudeReq.Stream, account, apiKey, startTime)
 }
 
 // extractSystemMessage 从system字段中提取系统消息文本
@@ -551,13 +545,13 @@ func convertClaudeToOpenAI(claudeReq ClaudeRequest, modelName string) OpenAIRequ
 		}
 	}
 
-	// 构建OpenAI请求
+	// 构建OpenAI请求（强制流式处理）
 	openaiReq := OpenAIRequest{
 		Model:       modelName,
 		Messages:    openaiMessages,
 		Temperature: claudeReq.Temperature,
 		TopP:        claudeReq.TopP,
-		Stream:      claudeReq.Stream,
+		Stream:      true, // 强制流式处理
 		Stop:        claudeReq.StopSequences,
 	}
 
@@ -657,43 +651,28 @@ func convertOpenAIToClaudeResponse(openaiResp OpenAIResponse, model string) Clau
 	}
 }
 
-// handleNonStreamingResponse 处理非流式响应
-func handleNonStreamingResponse(c *gin.Context, resp *http.Response, model string, account *model.Account, apiKey *model.ApiKey, startTime time.Time) {
-	// 读取OpenAI响应
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"type":    "response_read_error",
-				"message": "Failed to read response: " + err.Error(),
-			},
-		})
-		return
+// handleStreamingResponse 处理流式响应
+func handleStreamingResponse(c *gin.Context, resp *http.Response, model string, isClientStream bool, account *model.Account, apiKey *model.ApiKey, startTime time.Time) {
+	// 设置流式响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Writer.Flush()
+
+	// 创建流式转换器并处理OpenAI流式响应
+	transformer := createStreamTransformer(model)
+	usageTokens := processOpenAIStreamResponse(c.Writer, resp.Body, transformer, isClientStream)
+
+	// 如果没有usage信息，创建0值的TokenUsage用于日志记录
+	if usageTokens == nil {
+		usageTokens = &common.TokenUsage{
+			InputTokens:  0,
+			OutputTokens: 0,
+			Model:        model,
+		}
 	}
 
-	// 解析OpenAI响应
-	var openaiResp OpenAIResponse
-	if err := json.Unmarshal(bodyBytes, &openaiResp); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"type":    "json_parse_error",
-				"message": "Failed to parse OpenAI response: " + err.Error(),
-			},
-		})
-		return
-	}
-
-	// 转换为Claude格式
-	claudeResp := convertOpenAIToClaudeResponse(openaiResp, model)
-
-	// 创建token使用信息
-	usageTokens := &common.TokenUsage{
-		InputTokens:  openaiResp.Usage.PromptTokens,
-		OutputTokens: openaiResp.Usage.CompletionTokens,
-		Model:        model,
-	}
-
-	// 更新账号状态
+	// 更新账号状态和统计信息
 	accountService := service.NewAccountService()
 	go accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
 
@@ -703,36 +682,27 @@ func handleNonStreamingResponse(c *gin.Context, resp *http.Response, model strin
 	}
 
 	// 保存日志记录
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 && usageTokens != nil && apiKey != nil {
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 && apiKey != nil {
 		duration := time.Since(startTime).Milliseconds()
 		logService := service.NewLogService()
 		go func() {
-			_, err := logService.CreateLogFromTokenUsage(usageTokens, apiKey.UserID, apiKey.ID, account.ID, duration, false)
+			_, err := logService.CreateLogFromTokenUsage(usageTokens, apiKey.UserID, apiKey.ID, account.ID, duration, isClientStream)
 			if err != nil {
 				log.Printf("保存日志失败: %v", err)
 			}
 		}()
 	}
-
-	// 返回Claude格式响应
-	c.JSON(http.StatusOK, claudeResp)
 }
 
-// handleStreamingResponse 处理流式响应
-func handleStreamingResponse(c *gin.Context, resp *http.Response, model string, account *model.Account, apiKey *model.ApiKey, startTime time.Time) {
-	// 设置流式响应头
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Writer.Flush()
+// processOpenAIStreamResponse 处理OpenAI流式响应并转换为Claude格式
+func processOpenAIStreamResponse(writer gin.ResponseWriter, reader io.Reader, transformer *StreamTransformer, isClientStream bool) *common.TokenUsage {
+	scanner := bufio.NewScanner(reader)
 
-	// 创建流式转换器
-	transformer := createStreamTransformer(model)
+	var totalPromptTokens, totalCompletionTokens int
+	var responseContent strings.Builder
+	var toolCalls []OpenAIToolCall
+	var finishReason string
 
-	// 使用bufio.Scanner读取流式响应
-	scanner := bufio.NewScanner(resp.Body)
-
-	// 处理每一行流式数据
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
@@ -745,9 +715,10 @@ func handleStreamingResponse(c *gin.Context, resp *http.Response, model string, 
 
 		// 处理结束标记
 		if strings.TrimSpace(data) == "[DONE]" {
-			// 发送流式响应结束事件
-			transformer.sendFinalEvents(c.Writer)
-			return
+			if isClientStream {
+				transformer.sendFinalEvents(writer)
+			}
+			break
 		}
 
 		// 解析OpenAI流式数据
@@ -756,25 +727,141 @@ func handleStreamingResponse(c *gin.Context, resp *http.Response, model string, 
 			continue // 忽略解析错误的chunk
 		}
 
-		// 转换并发送Claude格式的流式数据
-		transformer.processChunk(c.Writer, openaiChunk)
+		// 提取usage信息
+		if usage, ok := openaiChunk["usage"].(map[string]interface{}); ok {
+			if promptTokens, ok := usage["prompt_tokens"].(float64); ok {
+				totalPromptTokens = int(promptTokens)
+			}
+			if completionTokens, ok := usage["completion_tokens"].(float64); ok {
+				totalCompletionTokens = int(completionTokens)
+			}
+		}
+
+		// 处理流式数据
+		if choices, ok := openaiChunk["choices"].([]interface{}); ok && len(choices) > 0 {
+			if choice, ok := choices[0].(map[string]interface{}); ok {
+				// 获取finish_reason
+				if reason, ok := choice["finish_reason"].(string); ok && reason != "" {
+					finishReason = reason
+				}
+
+				if delta, ok := choice["delta"].(map[string]interface{}); ok {
+					// 收集文本内容
+					if content, ok := delta["content"].(string); ok {
+						responseContent.WriteString(content)
+					}
+
+					// 收集工具调用增量数据
+					if toolCallsData, ok := delta["tool_calls"].([]interface{}); ok {
+						for _, tc := range toolCallsData {
+							if tcMap, ok := tc.(map[string]interface{}); ok {
+								index := int(tcMap["index"].(float64))
+
+								// 确保toolCalls数组足够长
+								for len(toolCalls) <= index {
+									toolCalls = append(toolCalls, OpenAIToolCall{})
+								}
+
+								// 更新工具调用信息
+								if id, ok := tcMap["id"].(string); ok {
+									toolCalls[index].ID = id
+									toolCalls[index].Type = "function"
+								}
+
+								if function, ok := tcMap["function"].(map[string]interface{}); ok {
+									if name, ok := function["name"].(string); ok {
+										toolCalls[index].Function.Name = name
+									}
+									if args, ok := function["arguments"].(string); ok {
+										toolCalls[index].Function.Arguments += args
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// 如果客户端需要流式响应，实时转发
+		if isClientStream {
+			transformer.processChunk(writer, openaiChunk)
+		}
 	}
 
-	// 检查扫描错误
-	if err := scanner.Err(); err != nil {
-		log.Printf("流式响应读取错误: %v", err)
+	// 如果客户端不需要流式响应，发送完整的非流式响应
+	if !isClientStream {
+		// 构建Claude格式的内容块
+		var contentBlocks []ClaudeContentBlock
+
+		// 添加文本内容
+		if responseContent.Len() > 0 {
+			contentBlocks = append(contentBlocks, ClaudeContentBlock{
+				Type: "text",
+				Text: responseContent.String(),
+			})
+		}
+
+		// 添加工具调用内容
+		for _, toolCall := range toolCalls {
+			if toolCall.ID != "" && toolCall.Function.Name != "" {
+				var input map[string]interface{}
+				if toolCall.Function.Arguments != "" {
+					json.Unmarshal([]byte(toolCall.Function.Arguments), &input)
+				}
+				if input == nil {
+					input = make(map[string]interface{})
+				}
+
+				contentBlocks = append(contentBlocks, ClaudeContentBlock{
+					Type:  "tool_use",
+					ID:    toolCall.ID,
+					Name:  toolCall.Function.Name,
+					Input: input,
+				})
+			}
+		}
+
+		// 映射停止原因
+		stopReasonMap := map[string]string{
+			"stop":       "end_turn",
+			"length":     "max_tokens",
+			"tool_calls": "tool_use",
+		}
+		stopReason := stopReasonMap[finishReason]
+		if stopReason == "" {
+			stopReason = "end_turn"
+		}
+
+		claudeResponse := ClaudeResponse{
+			ID:         fmt.Sprintf("msg_%s", generateRandomID()),
+			Type:       "message",
+			Role:       "assistant",
+			Model:      transformer.model,
+			Content:    contentBlocks,
+			StopReason: stopReason,
+			Usage: ClaudeUsage{
+				InputTokens:  totalPromptTokens,
+				OutputTokens: totalCompletionTokens,
+			},
+		}
+
+		// 设置非流式响应头
+		writer.Header().Set("Content-Type", "application/json")
+		jsonBytes, _ := json.Marshal(claudeResponse)
+		writer.Write(jsonBytes)
 	}
 
-	// 确保发送结束事件
-	transformer.sendFinalEvents(c.Writer)
-
-	// 更新统计信息（流式响应无法准确获取token使用量，使用估算值）
-	accountService := service.NewAccountService()
-	go accountService.UpdateAccountStatus(account, resp.StatusCode, nil)
-
-	if apiKey != nil {
-		go service.UpdateApiKeyStatus(apiKey, resp.StatusCode, nil)
+	// 返回token使用统计
+	if totalPromptTokens > 0 || totalCompletionTokens > 0 {
+		return &common.TokenUsage{
+			InputTokens:  totalPromptTokens,
+			OutputTokens: totalCompletionTokens,
+			Model:        transformer.model,
+		}
 	}
+
+	return nil
 }
 
 // StreamTransformer 流式转换器结构
