@@ -252,6 +252,8 @@ func (s *CronService) testAndRecoverAccount(account *model.Account) bool {
 		statusCode, err = relay.TestsHandleClaudeRequest(account)
 	case constant.PlatformClaudeConsole:
 		statusCode, err = relay.TestHandleClaudeConsoleRequest(account)
+	case constant.PlatformOpenAI:
+		statusCode, err = relay.TestHandleOpenAIRequest(account)
 	default:
 		common.SysError(fmt.Sprintf("Unsupported platform type for account %s (ID: %d): %s", account.Name, account.ID, account.PlatformType))
 		return false

@@ -1072,3 +1072,110 @@ func (st *StreamTransformer) sendFinalEvents(writer gin.ResponseWriter) {
 		"type": "message_stop",
 	})
 }
+
+// TestHandleOpenAIRequest 仅用于单元测试，返回状态码和响应内容
+func TestHandleOpenAIRequest(account *model.Account) (int, string) {
+	requestBody := `{
+		"model": "claude-sonnet-4-20250514",
+		"messages": [
+			{
+				"role": "user",
+				"content": [
+					{
+						"type": "text",
+						"text": "hi"
+					}
+				]
+			}
+		],
+		"temperature": 1,
+		"system": [
+			{
+				"type": "text",
+				"text": "You are Claude Code, Anthropic's official CLI for Claude.",
+				"cache_control": {
+					"type": "ephemeral"
+				}
+			}
+		],
+		"metadata": {
+			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
+		},
+		"max_tokens": 100,
+		"stream": true
+	}`
+
+	// 解析Claude请求
+	var claudeReq ClaudeRequest
+	if err := json.Unmarshal([]byte(requestBody), &claudeReq); err != nil {
+		return http.StatusBadRequest, "Failed to parse request JSON: " + err.Error()
+	}
+
+	// 检查账号配置
+	if account.RequestURL == "" {
+		return http.StatusBadRequest, "账号未配置请求地址"
+	}
+
+	targetConfig := &OpenAITargetConfig{
+		BaseURL:   account.RequestURL,
+		ModelName: "gpt-4o-mini",
+	}
+
+	// 应用模型映射
+	mappedModelName := applyModelMapping(claudeReq.Model, account.ModelMapping, targetConfig.ModelName)
+
+	// 转换Claude请求为OpenAI格式
+	openaiReq := convertClaudeToOpenAI(claudeReq, mappedModelName)
+
+	// 序列化OpenAI请求
+	openaiBody, err := json.Marshal(openaiReq)
+	if err != nil {
+		return http.StatusInternalServerError, "Failed to marshal OpenAI request: " + err.Error()
+	}
+
+	// 创建OpenAI API请求
+	openaiURL := targetConfig.BaseURL + "/chat/completions"
+	req, err := http.NewRequest("POST", openaiURL, bytes.NewBuffer(openaiBody))
+	if err != nil {
+		return http.StatusInternalServerError, "Failed to create request: " + err.Error()
+	}
+
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+account.SecretKey)
+
+	// 创建HTTP客户端
+	httpClientTimeout := 30 * time.Second
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	// 配置代理
+	if account.ProxyURI != "" {
+		proxyURL, err := url.Parse(account.ProxyURI)
+		if err != nil {
+			return http.StatusInternalServerError, "Invalid proxy URI: " + err.Error()
+		}
+		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+
+	client := &http.Client{
+		Timeout:   httpClientTimeout,
+		Transport: transport,
+	}
+
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		return http.StatusInternalServerError, "Request failed: " + err.Error()
+	}
+	defer common.CloseIO(resp.Body)
+
+	// 读取错误响应内容
+	if resp.StatusCode >= 400 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(bodyBytes)
+	}
+
+	return resp.StatusCode, ""
+}

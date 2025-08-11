@@ -417,7 +417,7 @@ func TestsHandleClaudeRequest(account *model.Account) (int, string) {
 		"metadata": {
 			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
 		},
-		"max_tokens": 64000,
+		"max_tokens": 100,
 		"stream": true
 	}`
 
