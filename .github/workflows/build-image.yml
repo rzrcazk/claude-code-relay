@@ -1,11 +1,37 @@
 name: Build and Push Docker Image to Aliyun
 
-# 触发条件：只有推送到主分支时触发
+# 触发条件：只有推送到主分支时触发，忽略web目录变更
 on:
   push:
     branches:
       - main
       - master
+    paths-ignore:
+      - 'web/**'
+      - '*.md'
+      - '**/*.md'
+      - '*.txt'
+      - '**/*.txt'
+      - '*.jpg'
+      - '*.jpeg'
+      - '*.png'
+      - '*.gif'
+      - '*.svg'
+      - '*.ico'
+      - '**/*.jpg'
+      - '**/*.jpeg'
+      - '**/*.png'
+      - '**/*.gif'
+      - '**/*.svg'
+      - '**/*.ico'
+      - '.gitignore'
+      - '.env.example'
+      - '.vscode/**'
+      - '.idea/**'
+      - 'logs/**'
+      - '*.log'
+      - '**/*.log'
+      - 'LICENSE'
 
 jobs:
   build-and-push:
