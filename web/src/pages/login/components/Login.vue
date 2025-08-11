@@ -10,7 +10,7 @@
   >
     <template v-if="type === 'password'">
       <t-form-item name="account">
-        <t-input v-model="formData.account" size="large" :placeholder="`${t('pages.login.input.account')}：admin`">
+        <t-input v-model="formData.account" size="large" :placeholder="`${t('pages.login.input.account')}`">
           <template #prefix-icon>
             <t-icon name="user" />
           </template>
@@ -23,7 +23,7 @@
           size="large"
           :type="showPsw ? 'text' : 'password'"
           clearable
-          :placeholder="`${t('pages.login.input.password')}：admin`"
+          :placeholder="`${t('pages.login.input.password')}`"
         >
           <template #prefix-icon>
             <t-icon name="lock-on" />
