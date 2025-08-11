@@ -79,7 +79,7 @@ type CreateAccountRequest struct {
 // 账号更新请求参数
 type UpdateAccountRequest struct {
 	Name            string `json:"name" binding:"required,min=1,max=100"`
-	PlatformType    string `json:"platform_type" binding:"required,oneof=claude claude_console"`
+	PlatformType    string `json:"platform_type" binding:"required,oneof=claude claude_console openai gemini"`
 	RequestURL      string `json:"request_url"`
 	SecretKey       string `json:"secret_key"`
 	GroupID         *int   `json:"group_id" binding:"omitempty,min=0"`

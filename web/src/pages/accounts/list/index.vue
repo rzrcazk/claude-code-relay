@@ -156,7 +156,10 @@
         <t-row v-if="formData.platform_type !== 'claude'" :gutter="16">
           <t-col :span="6">
             <t-form-item label="请求地址" name="request_url">
-              <t-input v-model="formData.request_url" placeholder="请输入API请求地址" />
+              <t-input
+                v-model="formData.request_url"
+                :placeholder="formData.platform_type === 'openai' ? 'https://api.openai.com/v1' : '请输入API请求地址'"
+              />
             </t-form-item>
           </t-col>
           <t-col :span="6">
@@ -218,7 +221,8 @@
               <template #tips>
                 <div class="model-mapping-tips">
                   格式：源模型:目标模型，多个映射用逗号分隔<br />
-                  示例：claude-haiku-20250303:gpt-4o-mini,claude-sonnet:gpt-4o
+                  示例：claude-haiku-20250303:gpt-4o-mini,claude-sonnet:gpt-4o <br />
+                  注意：映射的模型上下文至少保证64k, 否则在一些任务场景会失败
                 </div>
               </template>
             </t-form-item>
