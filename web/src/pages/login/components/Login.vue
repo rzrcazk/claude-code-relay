@@ -63,12 +63,18 @@
     </t-form-item>
 
     <div class="switch-container">
-      <span v-if="type !== 'password'" class="tip" @click="switchType('password')">使用账号登录</span>
-      <span v-if="type !== 'sms_code'" class="tip" @click="switchType('sms_code')">使用邮箱登录</span>
+      <div>
+        <span v-if="type !== 'password'" class="tip" @click="switchType('password')">使用账号登录</span>
+        <span v-if="type !== 'sms_code'" class="tip" @click="switchType('sms_code')">使用邮箱登录</span>
+      </div>
+      <div>
+        <span class="tip" @click="toApiKey"><secured-icon /> <span class="tip-text">API KEY用量查询</span></span>
+      </div>
     </div>
   </t-form>
 </template>
 <script setup lang="ts">
+import { SecuredIcon } from 'tdesign-icons-vue-next';
 import type { FormInstanceFunctions, FormRule, SubmitContext } from 'tdesign-vue-next';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { ref } from 'vue';
@@ -116,6 +122,10 @@ const switchType = (val: string) => {
 
 const router = useRouter();
 const route = useRoute();
+
+const toApiKey = () => {
+  router.push('/stats/api-key');
+};
 
 /**
  * 发送验证码
