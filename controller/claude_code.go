@@ -118,6 +118,8 @@ func GetMessages(c *gin.Context) {
 		relay.HandleClaudeRequest(c, &selectedAccount)
 	case constant.PlatformClaudeConsole:
 		relay.HandleClaudeConsoleRequest(c, &selectedAccount)
+	case constant.PlatformOpenAI:
+		relay.HandleOpenAIRequest(c, &selectedAccount)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "不支持的平台类型: " + selectedAccount.PlatformType,
@@ -128,34 +130,18 @@ func GetMessages(c *gin.Context) {
 
 // TestGetMessages 测试账号连接
 func TestGetMessages(c *gin.Context) {
-	var req TestAccountRequest
-
-	// 从URL参数中获取账号ID
-	accountIDStr := c.Param("id")
-	if accountIDStr == "" {
-		// 尝试从查询参数或表单中获取
-		if err := c.ShouldBind(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "参数错误: " + err.Error(),
-				"code":    constant.InvalidParams,
-			})
-			return
-		}
-	} else {
-		// 从URL参数解析账号ID
-		accountID, err := strconv.ParseUint(accountIDStr, 10, 32)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "无效的账号ID",
-				"code":    constant.InvalidParams,
-			})
-			return
-		}
-		req.AccountID = uint(accountID)
+	// 解析账号ID
+	accountID, err := parseAccountID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+			"code":    constant.InvalidParams,
+		})
+		return
 	}
 
 	// 获取账号信息
-	account, err := model.GetAccountByID(req.AccountID)
+	account, err := model.GetAccountByID(accountID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"message": "账号不存在",
@@ -164,42 +150,11 @@ func TestGetMessages(c *gin.Context) {
 		return
 	}
 
-	var testResult TestAccountResponse
-	testResult.PlatformType = account.PlatformType
+	// 执行账号测试
+	testResult := executeAccountTest(account)
 
-	// 根据平台类型调用不同的测试函数
-	switch account.PlatformType {
-	case constant.PlatformClaude:
-		statusCode, err := relay.TestsHandleClaudeRequest(account)
-		testResult.StatusCode = statusCode
-		if err != "" {
-			testResult.Success = false
-			testResult.Message = fmt.Sprintf("测试失败: %v", err)
-		} else if statusCode == http.StatusOK {
-			testResult.Success = true
-			testResult.Message = "测试成功，账号连接正常"
-		} else {
-			testResult.Success = false
-			testResult.Message = fmt.Sprintf("测试失败，HTTP状态码: %d", statusCode)
-		}
-
-	case constant.PlatformClaudeConsole:
-		statusCode, err := relay.TestHandleClaudeConsoleRequest(account)
-		testResult.StatusCode = statusCode
-		if err != "" {
-			testResult.Success = false
-			testResult.Message = fmt.Sprintf("测试失败: %v", err)
-		} else if statusCode == http.StatusOK {
-			testResult.Success = true
-			testResult.Message = "测试成功，账号连接正常"
-		} else {
-			testResult.Success = false
-			testResult.Message = fmt.Sprintf("测试失败，HTTP状态码: %d", statusCode)
-		}
-
-	default:
-		testResult.Success = false
-		testResult.Message = "不支持的平台类型: " + account.PlatformType
+	// 处理不支持的平台类型
+	if !testResult.Success && testResult.Message == "不支持的平台类型: "+account.PlatformType {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": testResult.Message,
 			"code":    constant.InvalidParams,
@@ -213,4 +168,64 @@ func TestGetMessages(c *gin.Context) {
 		"code":    constant.Success,
 		"data":    testResult,
 	})
+}
+
+// parseAccountID 解析账号ID（从URL参数或请求体）
+func parseAccountID(c *gin.Context) (uint, error) {
+	// 从URL参数中获取账号ID
+	if accountIDStr := c.Param("id"); accountIDStr != "" {
+		accountID, err := strconv.ParseUint(accountIDStr, 10, 32)
+		if err != nil {
+			return 0, fmt.Errorf("无效的账号ID")
+		}
+		return uint(accountID), nil
+	}
+
+	// 尝试从查询参数或表单中获取
+	var req TestAccountRequest
+	if err := c.ShouldBind(&req); err != nil {
+		return 0, fmt.Errorf("参数错误: %s", err.Error())
+	}
+	return req.AccountID, nil
+}
+
+// executeAccountTest 执行账号测试并返回结果
+func executeAccountTest(account *model.Account) TestAccountResponse {
+	testResult := TestAccountResponse{
+		PlatformType: account.PlatformType,
+	}
+
+	var statusCode int
+	var errorMsg string
+
+	// 根据平台类型调用不同的测试函数
+	switch account.PlatformType {
+	case constant.PlatformClaude:
+		statusCode, errorMsg = relay.TestsHandleClaudeRequest(account)
+	case constant.PlatformClaudeConsole:
+		statusCode, errorMsg = relay.TestHandleClaudeConsoleRequest(account)
+	case constant.PlatformOpenAI:
+		statusCode, errorMsg = relay.TestHandleOpenAIRequest(account)
+	default:
+		return TestAccountResponse{
+			Success:      false,
+			Message:      "不支持的平台类型: " + account.PlatformType,
+			PlatformType: account.PlatformType,
+		}
+	}
+
+	// 设置测试结果
+	testResult.StatusCode = statusCode
+	if errorMsg != "" {
+		testResult.Success = false
+		testResult.Message = fmt.Sprintf("测试失败: %v", errorMsg)
+	} else if statusCode == http.StatusOK {
+		testResult.Success = true
+		testResult.Message = "测试成功，账号连接正常"
+	} else {
+		testResult.Success = false
+		testResult.Message = fmt.Sprintf("测试失败，HTTP状态码: %d", statusCode)
+	}
+
+	return testResult
 }

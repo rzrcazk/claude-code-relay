@@ -37,6 +37,7 @@ export interface Account {
   today_total_cost: number;
   enable_proxy: boolean;
   proxy_uri: string;
+  model_mapping: string;
   last_used_time: string;
   rate_limit_end_time: string;
   current_status: number; // 1:正常,2:接口异常,3:账号异常/限流
@@ -65,6 +66,7 @@ export interface AccountCreateParams {
   weight?: number;
   enable_proxy?: boolean;
   proxy_uri?: string;
+  model_mapping?: string;
   active_status?: number;
   is_max?: boolean;
   access_token?: string;
@@ -84,6 +86,7 @@ export interface AccountUpdateParams {
   weight?: number;
   enable_proxy?: boolean;
   proxy_uri?: string;
+  model_mapping?: string;
   active_status?: number;
   is_max?: boolean;
   access_token?: string;

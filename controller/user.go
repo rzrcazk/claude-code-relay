@@ -600,14 +600,6 @@ func buildMenuByRole(role string) []MenuItem {
 						},
 					},
 					{
-						Path:      "dashboard",
-						Name:      "AdminDashboard",
-						Component: "/admin/dashboard/index",
-						Meta: MenuMeta{
-							Title: "系统概览",
-						},
-					},
-					{
 						Path:      "logs",
 						Name:      "AdminLogs",
 						Component: "/admin/logs/index",

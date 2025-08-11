@@ -54,7 +54,7 @@ func (s *CronService) Start() {
 	}
 
 	// 每10分钟检查限流过期账号
-	_, err = s.cron.AddFunc("0 */1 * * * *", s.checkRateLimitExpiredAccounts)
+	_, err = s.cron.AddFunc("0 */10 * * * *", s.checkRateLimitExpiredAccounts)
 	if err != nil {
 		log.Printf("Failed to add rate limit check cron job: %v", err)
 		return
@@ -252,10 +252,14 @@ func (s *CronService) testAndRecoverAccount(account *model.Account) bool {
 		statusCode, err = relay.TestsHandleClaudeRequest(account)
 	case constant.PlatformClaudeConsole:
 		statusCode, err = relay.TestHandleClaudeConsoleRequest(account)
+	case constant.PlatformOpenAI:
+		statusCode, err = relay.TestHandleOpenAIRequest(account)
 	default:
 		common.SysError(fmt.Sprintf("Unsupported platform type for account %s (ID: %d): %s", account.Name, account.ID, account.PlatformType))
 		return false
 	}
+
+	common.SysLog(fmt.Sprintf("Testing account %s (ID: %d) with status code: %d, error: %s", account.Name, account.ID, statusCode, err))
 
 	// 检查测试结果：状态码在200-300之间且无错误视为成功
 	if err == "" && statusCode >= 200 && statusCode < 300 {

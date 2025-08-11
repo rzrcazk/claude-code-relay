@@ -26,6 +26,7 @@ type Account struct {
 	TodayTotalCost                float64        `json:"today_total_cost" gorm:"default:0;comment:今日使用总费用(USD)"`
 	EnableProxy                   bool           `json:"enable_proxy" gorm:"default:false;comment:是否启用代理"`
 	ProxyURI                      string         `json:"proxy_uri" gorm:"type:varchar(500);comment:代理URI字符串"`
+	ModelMapping                  string         `json:"model_mapping" gorm:"type:text;comment:模型映射配置(格式:claude-model:openai-model,多个用逗号分隔)"`
 	LastUsedTime                  *Time          `json:"last_used_time" gorm:"comment:最后使用时间;type:datetime"`
 	RateLimitEndTime              *Time          `json:"rate_limit_end_time" gorm:"comment:限流结束时间;type:datetime"`
 	CurrentStatus                 int            `json:"current_status" gorm:"default:1;comment:当前状态(1:正常,2:接口异常,3:账号异常/限流)"`
@@ -66,6 +67,7 @@ type CreateAccountRequest struct {
 	Weight          int    `json:"weight" binding:"min=1"`
 	EnableProxy     bool   `json:"enable_proxy"`
 	ProxyURI        string `json:"proxy_uri"`
+	ModelMapping    string `json:"model_mapping"`
 	ActiveStatus    int    `json:"active_status" binding:"oneof=1 2"`
 	IsMax           bool   `json:"is_max"` // 是否是max账号
 	AccessToken     string `json:"access_token"`
@@ -77,7 +79,7 @@ type CreateAccountRequest struct {
 // 账号更新请求参数
 type UpdateAccountRequest struct {
 	Name            string `json:"name" binding:"required,min=1,max=100"`
-	PlatformType    string `json:"platform_type" binding:"required,oneof=claude claude_console"`
+	PlatformType    string `json:"platform_type" binding:"required,oneof=claude claude_console openai gemini"`
 	RequestURL      string `json:"request_url"`
 	SecretKey       string `json:"secret_key"`
 	GroupID         *int   `json:"group_id" binding:"omitempty,min=0"`
@@ -85,6 +87,7 @@ type UpdateAccountRequest struct {
 	Weight          int    `json:"weight" binding:"min=1"`
 	EnableProxy     bool   `json:"enable_proxy"`
 	ProxyURI        string `json:"proxy_uri"`
+	ModelMapping    string `json:"model_mapping"`
 	ActiveStatus    int    `json:"active_status" binding:"oneof=1 2"`
 	IsMax           bool   `json:"is_max"` // 是否是max账号
 	AccessToken     string `json:"access_token"`

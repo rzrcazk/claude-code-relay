@@ -10,3 +10,9 @@ export const LAST_30_DAYS = [
   dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
   dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
 ];
+
+// 格式化日期时间为本地字符串
+export const formatDateTime = (dateStr: string): string => {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleString('zh-CN');
+};

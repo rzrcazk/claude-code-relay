@@ -30,7 +30,6 @@
         :data="data"
         :columns="COLUMNS"
         :row-key="rowKey"
-        vertical-align="top"
         :hover="true"
         :pagination="pagination"
         :selected-row-keys="selectedRowKeys"
@@ -146,7 +145,7 @@
               <t-select v-model="formData.platform_type" placeholder="选择平台类型">
                 <t-option value="claude" label="Claude" />
                 <t-option value="claude_console" label="Claude Console" />
-                <t-option value="openai" label="OpenAI" disabled />
+                <t-option value="openai" label="OpenAI" />
                 <t-option value="gemini" label="Gemini" disabled />
               </t-select>
             </t-form-item>
@@ -157,7 +156,10 @@
         <t-row v-if="formData.platform_type !== 'claude'" :gutter="16">
           <t-col :span="6">
             <t-form-item label="请求地址" name="request_url">
-              <t-input v-model="formData.request_url" placeholder="请输入API请求地址" />
+              <t-input
+                v-model="formData.request_url"
+                :placeholder="formData.platform_type === 'openai' ? 'https://api.openai.com/v1' : '请输入API请求地址'"
+              />
             </t-form-item>
           </t-col>
           <t-col :span="6">
@@ -203,6 +205,26 @@
           <t-col :span="6">
             <t-form-item v-if="formData.enable_proxy" label="代理地址" name="proxy_uri">
               <t-input v-model="formData.proxy_uri" placeholder="http://proxy:8080" />
+            </t-form-item>
+          </t-col>
+        </t-row>
+
+        <!-- OpenAI 平台模型映射配置 -->
+        <t-row v-if="formData.platform_type === 'openai'" :gutter="16">
+          <t-col :span="12">
+            <t-form-item label="模型映射" name="model_mapping">
+              <t-textarea
+                v-model="formData.model_mapping"
+                placeholder="请输入模型映射配置，格式：claude-haiku-20250303:gpt-4o-mini,claude-sonnet:gpt-4o"
+                :rows="3"
+              />
+              <template #tips>
+                <div class="model-mapping-tips">
+                  格式：源模型:目标模型，多个映射用逗号分隔<br />
+                  示例：claude-haiku-20250303:gpt-4o-mini,claude-sonnet:gpt-4o <br />
+                  注意：映射的模型上下文至少保证64k, 否则在一些任务场景会失败
+                </div>
+              </template>
             </t-form-item>
           </t-col>
         </t-row>
@@ -459,6 +481,7 @@ const formData = reactive<AccountCreateParams & AccountUpdateParams>({
   weight: 100,
   enable_proxy: false,
   proxy_uri: '',
+  model_mapping: '',
   active_status: 1,
   is_max: false,
   access_token: '',
@@ -600,6 +623,7 @@ const handleCreate = () => {
     weight: 100,
     enable_proxy: false,
     proxy_uri: '',
+    model_mapping: '',
     active_status: 1,
     is_max: false,
     access_token: '',
@@ -628,6 +652,7 @@ const handleEdit = (item: Account) => {
     weight: item.weight,
     enable_proxy: item.enable_proxy,
     proxy_uri: item.proxy_uri || '',
+    model_mapping: item.model_mapping || '',
     active_status: item.active_status,
     is_max: item.is_max,
     access_token: item.access_token || '', // 现在回填访问令牌
@@ -669,6 +694,7 @@ const handleFormConfirm = async () => {
         weight: formData.weight,
         enable_proxy: formData.enable_proxy,
         proxy_uri: formData.proxy_uri,
+        model_mapping: formData.model_mapping,
         active_status: formData.active_status,
         is_max: formData.is_max,
         access_token: formData.access_token,
@@ -689,6 +715,7 @@ const handleFormConfirm = async () => {
         weight: formData.weight,
         enable_proxy: formData.enable_proxy,
         proxy_uri: formData.proxy_uri,
+        model_mapping: formData.model_mapping,
         active_status: formData.active_status,
         is_max: formData.is_max,
         access_token: formData.access_token,
@@ -917,31 +944,42 @@ onMounted(async () => {
   .info-banner-icon {
     flex-shrink: 0;
     margin-top: 2px;
-    
+
     .t-icon {
       font-size: 18px;
       color: #1890ff;
     }
   }
+}
 
-  .info-banner-content {
-    flex: 1;
-    min-width: 0;
-  }
+.model-mapping-tips {
+  font-size: 12px;
+  color: var(--td-text-color-secondary);
+  line-height: 1.5;
+  margin-top: 4px;
+}
 
-  .info-banner-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1890ff;
-    margin-bottom: 4px;
-    line-height: 1.4;
-  }
+.info-banner-content {
+  flex: 1;
+  min-width: 0;
+}
 
-  .info-banner-text {
-    font-size: 13px;
-    color: #595959;
-    line-height: 1.6;
-    margin: 0;
-  }
+.info-banner-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.info-banner-text {
+  font-size: 13px;
+  color: #595959;
+  line-height: 1.6;
+  margin: 0;
+}
+
+:deep(.t-form) {
+  width: 720px !important;
 }
 </style>
