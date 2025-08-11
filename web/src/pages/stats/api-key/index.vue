@@ -59,7 +59,7 @@
             <div class="stat-label">总费用</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">{{ formatDuration(statsData.stats.summary.avg_duration) }}ms</div>
+            <div class="stat-value">{{ formatDuration(statsData.stats.summary.avg_duration) }}</div>
             <div class="stat-label">平均响应时间</div>
           </div>
         </div>
@@ -80,7 +80,54 @@
           :pagination="pagination"
           :loading="loading"
           @page-change="handlePageChange"
-        />
+        >
+          <template #model_name="{ row }">
+            <t-tag theme="primary" variant="outline">{{ row.model_name }}</t-tag>
+          </template>
+
+          <template #tokens="{ row }">
+            <div class="tokens-info">
+              <p><strong>输入:</strong> {{ formatNumber(row.input_tokens) }}</p>
+              <p><strong>输出:</strong> {{ formatNumber(row.output_tokens) }}</p>
+              <p v-if="row.cache_read_input_tokens > 0">
+                <strong>缓存读:</strong> {{ formatNumber(row.cache_read_input_tokens) }}
+              </p>
+              <p v-if="row.cache_creation_input_tokens > 0">
+                <strong>缓存创建:</strong> {{ formatNumber(row.cache_creation_input_tokens) }}
+              </p>
+            </div>
+          </template>
+
+          <template #cost="{ row }">
+            <div class="cost-info">
+              <p class="total-cost">
+                <strong>${{ row.total_cost.toFixed(4) }}</strong>
+              </p>
+              <div class="cost-breakdown">
+                <small>输入: ${{ row.input_cost.toFixed(4) }}</small
+                ><br />
+                <small>输出: ${{ row.output_cost.toFixed(4) }}</small>
+                <small v-if="row.cache_read_cost > 0"> <br />缓存读: ${{ row.cache_read_cost.toFixed(4) }} </small>
+                <small v-if="row.cache_write_cost > 0"> <br />缓存写: ${{ row.cache_write_cost.toFixed(4) }} </small>
+              </div>
+            </div>
+          </template>
+
+          <template #duration="{ row }">
+            <t-tag theme="default" variant="light">{{ formatDuration(row.duration) }}</t-tag>
+          </template>
+
+          <template #api_key="{ row }">
+            <div v-if="row.api_key">
+              <t-tag variant="outline">{{ row.api_key.name }}</t-tag>
+            </div>
+            <span v-else class="text-placeholder">-</span>
+          </template>
+
+          <template #created_at="{ row }">
+            <span>{{ formatDateTime(row.created_at) }}</span>
+          </template>
+        </t-table>
       </t-card>
     </div>
 
@@ -93,6 +140,7 @@ import { LineChart } from 'echarts/charts';
 import { DataZoomComponent, GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
+import type { PrimaryTableCol, TableRowData } from 'tdesign-vue-next';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -128,53 +176,43 @@ const pagination = reactive({
 });
 
 // 表格列配置
-const logColumns = [
+const logColumns: PrimaryTableCol<TableRowData>[] = [
   {
-    colKey: 'id',
     title: 'ID',
+    align: 'left',
     width: 140,
+    colKey: 'id',
     ellipsis: true,
   },
   {
+    title: '模型名称',
     colKey: 'model_name',
-    title: '模型',
     width: 200,
   },
   {
-    colKey: 'input_tokens',
-    title: '输入Token',
-    width: 100,
-    cell: ({ row }: any) => formatNumber(row?.input_tokens || 0),
+    title: 'Token使用',
+    colKey: 'tokens',
+    width: 180,
   },
   {
-    colKey: 'output_tokens',
-    title: '输出Token',
-    width: 100,
-    cell: ({ row }: any) => formatNumber(row?.output_tokens || 0),
-  },
-  {
-    colKey: 'total_cost',
     title: '费用',
-    width: 100,
-    cell: ({ row }: any) => `$${formatCost(row?.total_cost || 0)}`,
-  },
-  {
-    colKey: 'duration',
-    title: '耗时',
-    width: 100,
-    cell: ({ row }: any) => `${row?.duration || 0}ms`,
-  },
-  {
-    colKey: 'is_stream',
-    title: '流式',
-    width: 80,
-    cell: ({ row }: any) => (row?.is_stream ? '是' : '否'),
-  },
-  {
-    colKey: 'created_at',
-    title: '创建时间',
+    colKey: 'cost',
     width: 160,
-    cell: ({ row }: any) => formatDateTime(row?.created_at || ''),
+  },
+  {
+    title: '耗时',
+    colKey: 'duration',
+    width: 100,
+  },
+  {
+    title: 'API Key',
+    colKey: 'api_key',
+    width: 140,
+  },
+  {
+    title: '创建时间',
+    colKey: 'created_at',
+    width: 180,
   },
 ];
 
@@ -351,8 +389,9 @@ function formatCost(value: number): string {
 }
 
 // 格式化时长
-function formatDuration(value: number): string {
-  return Math.round(value).toString();
+function formatDuration(duration: number): string {
+  if (duration < 1000) return `${duration}ms`;
+  return `${(duration / 1000).toFixed(2)}s`;
 }
 
 // 格式化日期时间
@@ -474,6 +513,36 @@ onUnmounted(() => {
           padding: 12px 16px;
         }
       }
+    }
+  }
+
+  .logs-section {
+    .tokens-info,
+    .cost-info {
+      font-size: 12px;
+      line-height: 1.4;
+
+      p {
+        margin: 2px 0;
+      }
+    }
+
+    .total-cost {
+      color: var(--td-text-color-primary);
+      font-weight: 600;
+    }
+
+    .cost-breakdown {
+      color: var(--td-text-color-secondary);
+      margin-top: 4px;
+    }
+
+    .text-placeholder {
+      color: var(--td-text-color-placeholder);
+    }
+
+    .mt-2 {
+      margin-top: 4px;
     }
   }
 }
