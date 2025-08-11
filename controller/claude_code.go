@@ -118,6 +118,8 @@ func GetMessages(c *gin.Context) {
 		relay.HandleClaudeRequest(c, &selectedAccount)
 	case constant.PlatformClaudeConsole:
 		relay.HandleClaudeConsoleRequest(c, &selectedAccount)
+	case constant.PlatformOpenAI:
+		relay.HandleOpenAIRequest(c, &selectedAccount)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "不支持的平台类型: " + selectedAccount.PlatformType,

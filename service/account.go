@@ -63,6 +63,7 @@ func (s *AccountService) CreateAccount(req *model.CreateAccountRequest, userID u
 		Weight:          req.Weight,
 		EnableProxy:     req.EnableProxy,
 		ProxyURI:        req.ProxyURI,
+		ModelMapping:    req.ModelMapping,
 		ActiveStatus:    req.ActiveStatus,
 		IsMax:           req.IsMax,
 		AccessToken:     req.AccessToken,
@@ -112,6 +113,7 @@ func (s *AccountService) UpdateAccount(id uint, req *model.UpdateAccountRequest,
 	account.Weight = req.Weight
 	account.EnableProxy = req.EnableProxy
 	account.ProxyURI = req.ProxyURI
+	account.ModelMapping = req.ModelMapping
 	account.ActiveStatus = req.ActiveStatus
 	account.IsMax = req.IsMax
 
