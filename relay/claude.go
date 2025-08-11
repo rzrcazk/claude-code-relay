@@ -30,6 +30,36 @@ const (
 	ClaudeAPIURL        = "https://api.anthropic.com/v1/messages"
 	ClaudeOAuthTokenURL = "https://console.anthropic.com/v1/oauth/token"
 	ClaudeOAuthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+
+	// 默认超时配置
+	defaultHTTPTimeout = 120 * time.Second
+	tokenRefreshBuffer = 300 // 5分钟
+	rateLimitDuration  = 5 * time.Hour
+
+	// 状态码
+	statusRateLimit  = 429
+	statusOK         = 200
+	statusBadRequest = 400
+
+	// 账号状态
+	accountStatusActive    = 1
+	accountStatusDisabled  = 2
+	accountStatusRateLimit = 3
+)
+
+// 错误类型定义
+var (
+	errRequestBody     = gin.H{"error": map[string]interface{}{"type": "request_error", "message": "Incorrect request body"}}
+	errMissingModel    = gin.H{"error": map[string]interface{}{"type": "request_error", "message": "The model field is missing in the request body"}}
+	errModelNotAllowed = gin.H{"error": map[string]interface{}{"type": "request_error", "message": "This model is not allowed."}}
+	errAuthFailed      = gin.H{"error": map[string]interface{}{"type": "authentication_error", "message": "Failed to get valid access token"}}
+	errCreateRequest   = gin.H{"error": map[string]interface{}{"type": "internal_server_error", "message": "Failed to create request"}}
+	errProxyConfig     = gin.H{"error": map[string]interface{}{"type": "proxy_configuration_error", "message": "Invalid proxy URI"}}
+	errTimeout         = gin.H{"error": map[string]interface{}{"type": "timeout_error", "message": "Request was canceled or timed out"}}
+	errNetworkError    = gin.H{"error": map[string]interface{}{"type": "network_error", "message": "Failed to execute request"}}
+	errDecompression   = gin.H{"error": map[string]interface{}{"type": "decompression_error", "message": "Failed to create decompressor"}}
+	errResponseRead    = gin.H{"error": map[string]interface{}{"type": "response_read_error", "message": "Failed to read error response"}}
+	errResponseError   = gin.H{"error": map[string]interface{}{"type": "response_error", "message": "Request failed"}}
 )
 
 // OAuthTokenResponse 表示OAuth token刷新响应
@@ -41,166 +71,211 @@ type OAuthTokenResponse struct {
 
 // HandleClaudeRequest 处理Claude官方API平台的请求
 func HandleClaudeRequest(c *gin.Context, account *model.Account) {
-	// 记录请求开始时间用于计算耗时
 	startTime := time.Now()
 
-	// 从上下文中获取API Key信息
-	var apiKey *model.ApiKey
-	if keyInfo, exists := c.Get("api_key"); exists {
-		apiKey = keyInfo.(*model.ApiKey)
-	}
-	ctx := c.Request.Context()
+	apiKey := extractAPIKey(c)
 
-	body, err := io.ReadAll(c.Request.Body)
-	if nil != err {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"type":    "request_error",
-				"message": "Incorrect request body",
-			},
-		})
+	requestData, err := parseAndValidateRequest(c)
+	if err != nil {
 		return
 	}
 
-	body, _ = sjson.SetBytes(body, "stream", true) // 强制流式输出
-
-	modelName := gjson.GetBytes(body, "model").String()
-	if modelName == "" {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": map[string]interface{}{
-				"type":    "request_error",
-				"message": "The model field is missing in the request body",
-			},
-		})
-		return
-	}
-
-	// 模型名称是否允许在apiKey的限制模型中
-	if apiKey.ModelRestriction != "" {
-		allowedModels := strings.Split(apiKey.ModelRestriction, ",")
-		modelAllowed := false
-		for _, allowedModel := range allowedModels {
-			if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
-				modelAllowed = true
-				break
-			}
-		}
-		if !modelAllowed {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": map[string]interface{}{
-					"type":    "request_error",
-					"message": "This model is not allowed.",
-				},
-			})
+	if apiKey != nil {
+		if err := validateModelRestriction(c, apiKey, requestData.ModelName); err != nil {
 			return
 		}
 	}
 
-	// 获取有效的访问token
 	accessToken, err := getValidAccessToken(account)
 	if err != nil {
 		log.Printf("获取有效访问token失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"type":    "authentication_error",
-				"message": "Failed to get valid access token: " + err.Error(),
-			},
-		})
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errAuthFailed, err.Error()))
 		return
 	}
 
-	req, err := http.NewRequestWithContext(ctx, c.Request.Method, ClaudeAPIURL, bytes.NewBuffer(body))
-	if nil != err {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"type":    "internal_server_error",
-				"message": "Failed to create request: " + err.Error(),
-			},
-		})
+	client := createHTTPClient(account)
+	if client == nil {
+		c.JSON(http.StatusInternalServerError, errProxyConfig)
 		return
 	}
 
-	// 使用公共的请求头构建方法
-	fixedHeaders := buildClaudeAPIHeaders(accessToken)
+	req, err := createClaudeRequest(c, requestData.Body, accessToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errCreateRequest, err.Error()))
+		return
+	}
 
-	// 透传所有原始请求头
+	resp, err := client.Do(req)
+	if err != nil {
+		handleRequestError(c, err)
+		return
+	}
+	defer common.CloseIO(resp.Body)
+
+	responseReader, err := createResponseReader(resp)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errDecompression, err.Error()))
+		return
+	}
+
+	var usageTokens *common.TokenUsage
+	if resp.StatusCode < statusBadRequest {
+		usageTokens = handleSuccessResponse(c, resp, responseReader)
+	} else {
+		handleErrorResponse(c, resp, responseReader, account)
+	}
+
+	updateAccountAndStats(account, resp.StatusCode, usageTokens)
+
+	if apiKey != nil {
+		go service.UpdateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
+	}
+
+	saveRequestLog(startTime, apiKey, account, resp.StatusCode, usageTokens, true)
+}
+
+// requestData 封装请求数据
+type requestData struct {
+	Body      []byte
+	ModelName string
+}
+
+// extractAPIKey 从上下文中提取API Key
+func extractAPIKey(c *gin.Context) *model.ApiKey {
+	if keyInfo, exists := c.Get("api_key"); exists {
+		return keyInfo.(*model.ApiKey)
+	}
+	return nil
+}
+
+// parseAndValidateRequest 解析并验证请求
+func parseAndValidateRequest(c *gin.Context) (*requestData, error) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, errRequestBody)
+		return nil, err
+	}
+
+	body, _ = sjson.SetBytes(body, "stream", true)
+
+	modelName := gjson.GetBytes(body, "model").String()
+	if modelName == "" {
+		c.JSON(http.StatusServiceUnavailable, errMissingModel)
+		return nil, errors.New("missing model")
+	}
+
+	return &requestData{Body: body, ModelName: modelName}, nil
+}
+
+// validateModelRestriction 验证模型限制
+func validateModelRestriction(c *gin.Context, apiKey *model.ApiKey, modelName string) error {
+	if apiKey.ModelRestriction == "" {
+		return nil
+	}
+
+	allowedModels := strings.Split(apiKey.ModelRestriction, ",")
+	for _, allowedModel := range allowedModels {
+		if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
+			return nil
+		}
+	}
+
+	c.JSON(http.StatusForbidden, errModelNotAllowed)
+	return errors.New("model not allowed")
+}
+
+// createHTTPClient 创建HTTP客户端
+func createHTTPClient(account *model.Account) *http.Client {
+	timeout := parseHTTPTimeout()
+
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	if account.EnableProxy && account.ProxyURI != "" {
+		proxyURL, err := url.Parse(account.ProxyURI)
+		if err != nil {
+			log.Printf("invalid proxy URI: %s", err.Error())
+			return nil
+		}
+		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	}
+}
+
+// parseHTTPTimeout 解析HTTP超时时间
+func parseHTTPTimeout() time.Duration {
+	if timeoutStr := os.Getenv("HTTP_CLIENT_TIMEOUT"); timeoutStr != "" {
+		if timeout, err := time.ParseDuration(timeoutStr + "s"); err == nil {
+			return timeout
+		}
+	}
+	return defaultHTTPTimeout
+}
+
+// createClaudeRequest 创建Claude请求
+func createClaudeRequest(c *gin.Context, body []byte, accessToken string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(
+		c.Request.Context(),
+		c.Request.Method,
+		ClaudeAPIURL,
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	copyRequestHeaders(c, req)
+	setClaudeAPIHeaders(req, accessToken)
+	setStreamHeaders(c, req)
+
+	return req, nil
+}
+
+// copyRequestHeaders 复制原始请求头
+func copyRequestHeaders(c *gin.Context, req *http.Request) {
 	for name, values := range c.Request.Header {
 		for _, value := range values {
 			req.Header.Add(name, value)
 		}
 	}
+}
 
-	// 设置或覆盖固定请求头
+// setClaudeAPIHeaders 设置Claude API请求头
+func setClaudeAPIHeaders(req *http.Request, accessToken string) {
+	fixedHeaders := buildClaudeAPIHeaders(accessToken)
 	for name, value := range fixedHeaders {
 		req.Header.Set(name, value)
 	}
 
-	// 删除不需要的请求头
 	req.Header.Del("X-Api-Key")
 	req.Header.Del("Cookie")
+}
 
-	// 处理流式请求的Accept头
-	isStream := true
+// setStreamHeaders 设置流式请求头
+func setStreamHeaders(c *gin.Context, req *http.Request) {
 	if c.Request.Header.Get("Accept") == "" {
 		req.Header.Set("Accept", "text/event-stream")
 	}
+}
 
-	httpClientTimeout, _ := time.ParseDuration(os.Getenv("HTTP_CLIENT_TIMEOUT") + "s")
-	if httpClientTimeout == 0 {
-		httpClientTimeout = 120 * time.Second
-	}
-
-	// 创建基础Transport配置
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-
-	// 如果启用了代理并配置了代理URI，配置代理
-	if account.EnableProxy && account.ProxyURI != "" {
-		proxyURL, err := url.Parse(account.ProxyURI)
-		if err != nil {
-			log.Printf("invalid proxy URI: %s", err.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"type":    "proxy_configuration_error",
-					"message": "Invalid proxy URI: " + err.Error(),
-				},
-			})
-			return
-		}
-		transport.Proxy = http.ProxyURL(proxyURL)
-	}
-
-	client := &http.Client{
-		Timeout:   httpClientTimeout,
-		Transport: transport,
-	}
-
-	resp, err := client.Do(req)
-	if nil != err {
-		if errors.Is(err, context.Canceled) {
-			c.JSON(http.StatusRequestTimeout, gin.H{
-				"error": map[string]interface{}{
-					"type":    "timeout_error",
-					"message": "Request was canceled or timed out",
-				},
-			})
-			return
-		}
-
-		log.Printf("❌ 请求失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"type":    "network_error",
-				"message": "Failed to execute request: " + err.Error(),
-			},
-		})
+// handleRequestError 处理请求错误
+func handleRequestError(c *gin.Context, err error) {
+	if errors.Is(err, context.Canceled) {
+		c.JSON(http.StatusRequestTimeout, errTimeout)
 		return
 	}
-	defer common.CloseIO(resp.Body)
 
-	// 检查响应是否需要解压缩
-	var responseReader io.Reader = resp.Body
+	log.Printf("❌ 请求失败: %v", err)
+	c.JSON(http.StatusInternalServerError, appendErrorMessage(errNetworkError, err.Error()))
+}
+
+// createResponseReader 创建响应读取器（处理压缩）
+func createResponseReader(resp *http.Response) (io.Reader, error) {
 	contentEncoding := resp.Header.Get("Content-Encoding")
 
 	switch strings.ToLower(contentEncoding) {
@@ -208,174 +283,162 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
 			log.Printf("[Claude API] 创建gzip解压缩器失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"type":    "decompression_error",
-					"message": "Failed to create gzip decompressor: " + err.Error(),
-				},
-			})
-			return
+			return nil, err
 		}
-		defer gzipReader.Close()
-		responseReader = gzipReader
+		return gzipReader, nil
 	case "deflate":
-		deflateReader := flate.NewReader(resp.Body)
-		defer deflateReader.Close()
-		responseReader = deflateReader
+		return flate.NewReader(resp.Body), nil
+	default:
+		return resp.Body, nil
 	}
+}
 
-	// 读取响应体
-	var responseBody []byte
-	var usageTokens *common.TokenUsage
-
-	if resp.StatusCode >= 400 {
-		// 错误响应，直接读取全部内容
-		var readErr error
-		responseBody, readErr = io.ReadAll(responseReader)
-		if readErr != nil {
-			log.Printf("❌ 读取错误响应失败: %v", readErr)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"type":    "response_read_error",
-					"message": "Failed to read error response: " + readErr.Error(),
-				},
-			})
-			return
-		}
-
-		// 调试日志：打印错误响应内容
-		log.Printf("❌ 错误响应内容: %s", string(responseBody))
-	}
-
-	// 透传响应状态码
+// handleSuccessResponse 处理成功响应
+func handleSuccessResponse(c *gin.Context, resp *http.Response, responseReader io.Reader) *common.TokenUsage {
 	c.Status(resp.StatusCode)
+	copyResponseHeaders(c, resp)
+	setStreamResponseHeaders(c)
 
-	// 透传所有响应头，但需要处理Content-Length以避免流式响应问题
+	c.Writer.Flush()
+
+	usageTokens, err := common.ParseStreamResponse(c.Writer, responseReader)
+	if err != nil {
+		log.Println("stream copy and parse failed:", err.Error())
+	}
+
+	return usageTokens
+}
+
+// handleErrorResponse 处理错误响应
+func handleErrorResponse(c *gin.Context, resp *http.Response, responseReader io.Reader, account *model.Account) {
+	responseBody, err := io.ReadAll(responseReader)
+	if err != nil {
+		log.Printf("❌ 读取错误响应失败: %v", err)
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errResponseRead, err.Error()))
+		return
+	}
+
+	log.Printf("❌ 错误响应内容: %s", string(responseBody))
+
+	c.Status(resp.StatusCode)
+	copyResponseHeaders(c, resp)
+
+	handleRateLimit(resp, responseBody, account)
+
+	c.JSON(http.StatusServiceUnavailable, gin.H{
+		"error": map[string]interface{}{
+			"type":    "response_error",
+			"message": "Request failed with status " + strconv.Itoa(resp.StatusCode),
+		},
+	})
+}
+
+// copyResponseHeaders 复制响应头
+func copyResponseHeaders(c *gin.Context, resp *http.Response) {
 	for name, values := range resp.Header {
-		// 跳过Content-Length，让Gin自动处理流式响应
-		if strings.ToLower(name) == "content-length" {
-			continue
-		}
-		for _, value := range values {
-			c.Header(name, value)
-		}
-	}
-
-	if resp.StatusCode < 400 {
-		// 成功响应：确保设置正确的流式响应头
-		c.Header("Cache-Control", "no-cache")
-		c.Header("Connection", "keep-alive")
-		if c.Writer.Header().Get("Content-Type") == "" {
-			c.Header("Content-Type", "text/event-stream")
-		}
-
-		// 刷新响应头到客户端
-		c.Writer.Flush()
-
-		// 成功响应，使用流式解析 - 现在使用真正的流式转发
-		usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
-		if err != nil {
-			log.Println("stream copy and parse failed:", err.Error())
-		}
-	}
-
-	// 如果是错误响应，写入固定503错误
-	if resp.StatusCode >= 400 {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": map[string]interface{}{
-				"type":    "response_error",
-				"message": "Request failed with status " + strconv.Itoa(resp.StatusCode),
-			},
-		})
-	}
-
-	// 处理限流逻辑
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		// 请求成功，检查并清除可能的限流状态
-		if account.CurrentStatus == 3 && account.RateLimitEndTime != nil {
-			now := time.Now()
-			if now.After(time.Time(*account.RateLimitEndTime)) {
-				// 限流时间已过，重置状态
-				account.CurrentStatus = 1
-				account.RateLimitEndTime = nil
-				if err := model.UpdateAccount(account); err != nil {
-					log.Printf("重置账号限流状态失败: %v", err)
-				} else {
-					log.Printf("账号 %s 限流状态已自动重置", account.Name)
-				}
+		if strings.ToLower(name) != "content-length" {
+			for _, value := range values {
+				c.Header(name, value)
 			}
 		}
+	}
+}
+
+// setStreamResponseHeaders 设置流式响应头
+func setStreamResponseHeaders(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	if c.Writer.Header().Get("Content-Type") == "" {
+		c.Header("Content-Type", "text/event-stream")
+	}
+}
+
+// handleRateLimit 处理限流逻辑
+func handleRateLimit(resp *http.Response, responseBody []byte, account *model.Account) {
+	isRateLimited, resetTimestamp := detectRateLimit(resp, responseBody)
+	if !isRateLimited {
+		return
+	}
+
+	log.Printf("🚫 检测到账号 %s 被限流，状态码: %d", account.Name, resp.StatusCode)
+
+	account.CurrentStatus = accountStatusRateLimit
+
+	if resetTimestamp > 0 {
+		resetTime := time.Unix(resetTimestamp, 0)
+		rateLimitEndTime := model.Time(resetTime)
+		account.RateLimitEndTime = &rateLimitEndTime
+		log.Printf("账号 %s 限流至 %s", account.Name, resetTime.Format(time.RFC3339))
 	} else {
-		// 处理限流检测
-		isRateLimited := false
-		var rateLimitResetTimestamp int64 = 0
+		resetTime := time.Now().Add(rateLimitDuration)
+		rateLimitEndTime := model.Time(resetTime)
+		account.RateLimitEndTime = &rateLimitEndTime
+		log.Printf("账号 %s 限流至 %s (默认5小时)", account.Name, resetTime.Format(time.RFC3339))
+	}
 
-		if resp.StatusCode == 429 {
-			isRateLimited = true
+	if err := model.UpdateAccount(account); err != nil {
+		log.Printf("更新账号限流状态失败: %v", err)
+	}
+}
 
-			// 提取限流重置时间戳
-			if resetHeader := resp.Header.Get("anthropic-ratelimit-unified-reset"); resetHeader != "" {
-				if timestamp, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
-					rateLimitResetTimestamp = timestamp
-					resetTime := time.Unix(timestamp, 0)
-					log.Printf("🕐 提取到限流重置时间戳: %d (%s)", timestamp, resetTime.Format(time.RFC3339))
-				}
-			}
-		} else if len(responseBody) > 0 {
-			// 检查响应体中的限流错误信息（对于非429错误）
-			errorBodyStr := string(responseBody)
-
-			// 尝试解析为JSON
-			if errorData := gjson.Get(errorBodyStr, "error.message"); errorData.Exists() {
-				if strings.Contains(strings.ToLower(errorData.String()), "exceed your account's rate limit") {
-					isRateLimited = true
-				}
-			} else {
-				// 直接检查字符串内容
-				if strings.Contains(strings.ToLower(errorBodyStr), "exceed your account's rate limit") {
-					isRateLimited = true
-				}
+// detectRateLimit 检测限流状态
+func detectRateLimit(resp *http.Response, responseBody []byte) (bool, int64) {
+	if resp.StatusCode == statusRateLimit {
+		if resetHeader := resp.Header.Get("anthropic-ratelimit-unified-reset"); resetHeader != "" {
+			if timestamp, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
+				resetTime := time.Unix(timestamp, 0)
+				log.Printf("🕐 提取到限流重置时间戳: %d (%s)", timestamp, resetTime.Format(time.RFC3339))
+				return true, timestamp
 			}
 		}
+		return true, 0
+	}
 
-		if isRateLimited {
-			log.Printf("🚫 检测到账号 %s 被限流，状态码: %d", account.Name, resp.StatusCode)
+	if len(responseBody) > 0 {
+		errorBodyStr := strings.ToLower(string(responseBody))
+		rateLimitKeyword := "exceed your account's rate limit"
 
-			// 更新账号限流状态
-			account.CurrentStatus = 3 // 限流状态
-
-			if rateLimitResetTimestamp > 0 {
-				// 使用API提供的准确重置时间
-				resetTime := time.Unix(rateLimitResetTimestamp, 0)
-				rateLimitEndTime := model.Time(resetTime)
-				account.RateLimitEndTime = &rateLimitEndTime
-				log.Printf("账号 %s 限流至 %s", account.Name, resetTime.Format(time.RFC3339))
-			} else {
-				// 使用默认5小时限流时间
-				resetTime := time.Now().Add(5 * time.Hour)
-				rateLimitEndTime := model.Time(resetTime)
-				account.RateLimitEndTime = &rateLimitEndTime
-				log.Printf("账号 %s 限流至 %s (默认5小时)", account.Name, resetTime.Format(time.RFC3339))
+		if errorData := gjson.Get(string(responseBody), "error.message"); errorData.Exists() {
+			if strings.Contains(strings.ToLower(errorData.String()), rateLimitKeyword) {
+				return true, 0
 			}
-
-			// 立即更新数据库
-			if err := model.UpdateAccount(account); err != nil {
-				log.Printf("更新账号限流状态失败: %v", err)
-			}
+		} else if strings.Contains(errorBodyStr, rateLimitKeyword) {
+			return true, 0
 		}
 	}
 
-	// 处理响应状态码并更新账号状态
+	return false, 0
+}
+
+// updateAccountAndStats 更新账号状态和统计
+func updateAccountAndStats(account *model.Account, statusCode int, usageTokens *common.TokenUsage) {
+	if statusCode >= statusOK && statusCode < 300 {
+		clearRateLimitIfExpired(account)
+	}
+
 	accountService := service.NewAccountService()
-	accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
+	accountService.UpdateAccountStatus(account, statusCode, usageTokens)
+}
 
-	// 更新API Key统计信息
-	if apiKey != nil {
-		go service.UpdateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
+// clearRateLimitIfExpired 清除已过期的限流状态
+func clearRateLimitIfExpired(account *model.Account) {
+	if account.CurrentStatus == accountStatusRateLimit && account.RateLimitEndTime != nil {
+		now := time.Now()
+		if now.After(time.Time(*account.RateLimitEndTime)) {
+			account.CurrentStatus = accountStatusActive
+			account.RateLimitEndTime = nil
+			if err := model.UpdateAccount(account); err != nil {
+				log.Printf("重置账号限流状态失败: %v", err)
+			} else {
+				log.Printf("账号 %s 限流状态已自动重置", account.Name)
+			}
+		}
 	}
+}
 
-	// 保存日志记录（仅在请求成功时记录）
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 && usageTokens != nil && apiKey != nil {
+// saveRequestLog 保存请求日志
+func saveRequestLog(startTime time.Time, apiKey *model.ApiKey, account *model.Account, statusCode int, usageTokens *common.TokenUsage, isStream bool) {
+	if statusCode >= statusOK && statusCode < 300 && usageTokens != nil && apiKey != nil {
 		duration := time.Since(startTime).Milliseconds()
 		logService := service.NewLogService()
 		go func() {
@@ -385,43 +448,19 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 			}
 		}()
 	}
+}
 
+// appendErrorMessage 为错误消息追加详细信息
+func appendErrorMessage(baseError gin.H, message string) gin.H {
+	errorMap := baseError["error"].(map[string]interface{})
+	errorMap["message"] = errorMap["message"].(string) + ": " + message
+	return gin.H{"error": errorMap}
 }
 
 // TestsHandleClaudeRequest 用于测试的Claude请求处理函数，功能同HandleClaudeRequest但不更新日志和账号状态
 // 主要用于单元测试和集成测试，避免对数据库和日志系统的
 func TestsHandleClaudeRequest(account *model.Account) (int, string) {
-	requestBody := `{
-		"model": "claude-sonnet-4-20250514",
-		"messages": [
-			{
-				"role": "user",
-				"content": [
-					{
-						"type": "text",
-						"text": "hi"
-					}
-				]
-			}
-		],
-		"temperature": 1,
-		"system": [
-			{
-				"type": "text",
-				"text": "You are Claude Code, Anthropic's official CLI for Claude.",
-				"cache_control": {
-					"type": "ephemeral"
-				}
-			}
-		],
-		"metadata": {
-			"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
-		},
-		"max_tokens": 100,
-		"stream": true
-	}`
-
-	body, _ := sjson.SetBytes([]byte(requestBody), "stream", true)
+	body, _ := sjson.SetBytes([]byte(TestRequestBody), "stream", true)
 
 	// 获取有效的访问token
 	accessToken, err := getValidAccessToken(account)
@@ -507,7 +546,7 @@ func getValidAccessToken(account *model.Account) (string, error) {
 	expiresAt := int64(account.ExpiresAt)
 
 	// 如果过期时间存在且距离过期不到5分钟，或者已经过期，则需要刷新
-	if expiresAt > 0 && now >= (expiresAt-300) {
+	if expiresAt > 0 && now >= (expiresAt-tokenRefreshBuffer) {
 		log.Printf("账号 %s 的token即将过期或已过期，尝试刷新", account.Name)
 
 		if account.RefreshToken == "" {
@@ -526,7 +565,7 @@ func getValidAccessToken(account *model.Account) (string, error) {
 
 			// token已过期且刷新失败，禁用此账号
 			log.Printf("token已过期且刷新失败，禁用账号: %s", account.Name)
-			account.CurrentStatus = 2 // 设置为禁用状态
+			account.CurrentStatus = accountStatusDisabled // 设置为禁用状态
 			if updateErr := model.UpdateAccount(account); updateErr != nil {
 				log.Printf("禁用账号失败: %v", updateErr)
 			} else {
