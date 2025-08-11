@@ -6,7 +6,7 @@
       :value="active"
       :collapsed="collapsed"
       :expanded="expanded"
-      :expand-mutex="menuAutoCollapsed"
+      :expand-mutex="false"
       @expand="onExpanded"
     >
       <template #logo>
@@ -75,12 +75,31 @@ const active = computed(() => getActive());
 
 const expanded = ref<MenuValue[]>([]);
 
+// 获取所有菜单路径用于全部展开
+const getAllMenuPaths = (menuList: MenuRoute[], basePath = ''): string[] => {
+  const paths: string[] = [];
+  menuList.forEach(item => {
+    const fullPath = basePath + item.path;
+    paths.push(fullPath);
+    if (item.children && item.children.length > 0) {
+      paths.push(...getAllMenuPaths(item.children, fullPath + '/'));
+    }
+  });
+  return paths;
+};
+
 const getExpanded = () => {
   const path = getActive();
   const parts = path.split('/').slice(1);
   const result = parts.map((_, index) => `/${parts.slice(0, index + 1).join('/')}`);
 
-  expanded.value = menuAutoCollapsed.value ? result : union(result, expanded.value);
+  // 如果不是自动收缩模式，则展开所有菜单项
+  if (!menuAutoCollapsed.value) {
+    const allPaths = getAllMenuPaths(menu);
+    expanded.value = union(result, expanded.value, allPaths);
+  } else {
+    expanded.value = result;
+  }
 };
 
 watch(
