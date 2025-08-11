@@ -53,7 +53,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 	body, err := io.ReadAll(c.Request.Body)
 	if nil != err {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": map[string]interface{}{
+				"type":    "request_error",
+				"message": "Incorrect request body",
+			},
+		})
 		return
 	}
 
@@ -61,8 +66,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 	modelName := gjson.GetBytes(body, "model").String()
 	if modelName == "" {
-		log.Printf("请求体中缺少model字段")
-		c.AbortWithStatus(http.StatusServiceUnavailable)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": map[string]interface{}{
+				"type":    "request_error",
+				"message": "The model field is missing in the request body",
+			},
+		})
 		return
 	}
 
@@ -77,8 +86,12 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 			}
 		}
 		if !modelAllowed {
-			log.Printf("API Key %s 不允许使用模型 %s", apiKey.Key, modelName)
-			c.AbortWithStatus(http.StatusForbidden)
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": map[string]interface{}{
+					"type":    "request_error",
+					"message": "This model is not allowed.",
+				},
+			})
 			return
 		}
 	}
@@ -266,14 +279,14 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
-	// 如果是错误响应，写入响应体
+	// 如果是错误响应，写入固定503错误
 	if resp.StatusCode >= 400 {
-		c.Writer.Write(responseBody)
-
-		// 如果是401或403错误，记录详细信息
-		if resp.StatusCode == 401 || resp.StatusCode == 403 {
-			log.Printf("认证错误 %d，账号: %s，错误详情: %s", resp.StatusCode, account.Name, string(responseBody))
-		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": map[string]interface{}{
+				"type":    "response_error",
+				"message": "Request failed with status " + strconv.Itoa(resp.StatusCode),
+			},
+		})
 	}
 
 	// 处理限流逻辑
@@ -354,7 +367,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 	// 处理响应状态码并更新账号状态
 	accountService := service.NewAccountService()
-	go accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
+	accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
 
 	// 更新API Key统计信息
 	if apiKey != nil {

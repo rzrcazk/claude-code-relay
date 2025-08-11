@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -46,7 +47,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 
 	body, _ = sjson.SetBytes(body, "stream", true) // 强制流式输出
 
-	req, err := http.NewRequestWithContext(ctx, c.Request.Method, account.RequestURL+"/v1/messages?beta=true", bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, c.Request.Method, account.RequestURL+"/v1/messages", bytes.NewBuffer(body))
 	if nil != err {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": map[string]interface{}{
@@ -149,6 +150,20 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 	}
 	defer common.CloseIO(resp.Body)
 
+	// 处理响应状态码并更新账号状态
+	accountService := service.NewAccountService()
+	// 如果是错误响应，写入固定503错误
+	if resp.StatusCode >= 400 {
+		accountService.UpdateAccountStatus(account, resp.StatusCode, nil)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": map[string]interface{}{
+				"type":    "response_error",
+				"message": "Request failed with status " + strconv.Itoa(resp.StatusCode),
+			},
+		})
+		return
+	}
+
 	// 检查响应是否需要解压缩
 	var responseReader io.Reader = resp.Body
 	contentEncoding := resp.Header.Get("Content-Encoding")
@@ -188,45 +203,25 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
 		}
 	}
 
+	// 确保设置正确的流式响应头
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	if c.Writer.Header().Get("Content-Type") == "" {
+		c.Header("Content-Type", "text/event-stream")
+	}
+
+	// 刷新响应头到客户端
+	c.Writer.Flush()
+
 	var usageTokens *common.TokenUsage
 
-	if resp.StatusCode >= 400 {
-		// 错误响应，直接读取全部内容
-		responseBody, readErr := io.ReadAll(responseReader)
-		if readErr != nil {
-			log.Printf("❌ 读取错误响应失败: %v", readErr)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"type":    "response_read_error",
-					"message": "Failed to read error response: " + readErr.Error(),
-				},
-			})
-			return
-		}
-
-		// 调试日志：打印错误响应内容
-		log.Printf("❌ Claude Console错误响应内容: %s", string(responseBody))
-		c.Writer.Write(responseBody)
-	} else {
-		// 确保设置正确的流式响应头
-		c.Header("Cache-Control", "no-cache")
-		c.Header("Connection", "keep-alive")
-		if c.Writer.Header().Get("Content-Type") == "" {
-			c.Header("Content-Type", "text/event-stream")
-		}
-
-		// 刷新响应头到客户端
-		c.Writer.Flush()
-
-		// 解析token使用量 - 现在使用真正的流式转发
-		usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
-		if err != nil {
-			log.Println("stream copy and parse failed:", err.Error())
-		}
+	// 解析token使用量 - 现在使用真正的流式转发
+	usageTokens, err = common.ParseStreamResponse(c.Writer, responseReader)
+	if err != nil {
+		log.Println("stream copy and parse failed:", err.Error())
 	}
 
 	// 处理响应状态码并更新账号状态
-	accountService := service.NewAccountService()
 	go accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
 
 	// 更新API Key统计信息
