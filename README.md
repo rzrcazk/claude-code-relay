@@ -1,6 +1,8 @@
 # Claude Code Relay
 
-基于Go + Gin的Claude Code 镜像中转服务，采用分层架构设计。支持多账号池管理、智能负载均衡、API Key分发、使用统计和成本计算。包含完整的Vue 3管理界面，基于TDesign组件库。
+基于Go + Gin的Claude Code 镜像中转服务，采用分层架构设计。支持多账号池管理、智能负载均衡、API Key分发、使用统计和成本计算。包含完整的Vue 3管理界面，基于TDesign组件库。  
+
+**如果此项目对您有所帮助, 请帮我点个 ⭐️ 吧~**   
 
 ![home.png](docs/home.png)
 
