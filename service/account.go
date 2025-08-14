@@ -221,7 +221,7 @@ func (s *AccountService) UpdateAccountStatus(account *model.Account, statusCode 
 	case statusCode == 429:
 		// 限流状态
 		account.CurrentStatus = 3
-	case statusCode > 400:
+	case statusCode >= 400:
 		// 接口异常
 		account.CurrentStatus = 2
 	case statusCode == 200 || statusCode == 201:
