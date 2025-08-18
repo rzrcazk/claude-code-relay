@@ -125,7 +125,7 @@ const formatDate = (dateString: string) => {
       hour: '2-digit',
       minute: '2-digit',
     });
-  } catch () {
+  } catch {
     return '暂无';
   }
 };
