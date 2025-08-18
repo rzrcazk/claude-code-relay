@@ -29,7 +29,7 @@
 
           <t-dropdown :min-column-width="120" trigger="click">
             <template #dropdown>
-              <t-dropdown-item class="operations-dropdown-container-item" @click="handleNav('/user/index')">
+              <t-dropdown-item class="operations-dropdown-container-item" @click="showUserProfile">
                 <user-circle-icon />{{ t('layout.header.user') }}
               </t-dropdown-item>
               <t-dropdown-item class="operations-dropdown-container-item" @click="handleLogout">
@@ -47,15 +47,19 @@
         </div>
       </template>
     </t-head-menu>
+
+    <!-- 用户个人中心弹层 -->
+    <user-profile-modal v-model:visible="userProfileVisible" />
   </div>
 </template>
 <script setup lang="ts">
 import { ChevronDownIcon, PoweroffIcon, UserCircleIcon } from 'tdesign-icons-vue-next';
 import type { PropType } from 'vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import LogoFull from '@/assets/assets-logo-full.svg?component';
+import UserProfileModal from '@/components/UserProfile/UserProfileModal.vue';
 import { prefix } from '@/config/global';
 import { t } from '@/locales';
 import { useLocale } from '@/locales/useLocale';
@@ -100,6 +104,9 @@ const router = useRouter();
 const settingStore = useSettingStore();
 const user = useUserStore();
 
+// 用户个人中心弹层状态
+const userProfileVisible = ref(false);
+
 const toggleSettingPanel = () => {
   settingStore.updateConfig({
     showSettingPanel: true,
@@ -136,6 +143,11 @@ const changeCollapsed = () => {
 
 const handleNav = (url: string) => {
   router.push(url);
+};
+
+// 显示用户个人中心弹层
+const showUserProfile = () => {
+  userProfileVisible.value = true;
 };
 
 const handleLogout = () => {

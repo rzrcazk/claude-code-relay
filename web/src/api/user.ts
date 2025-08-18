@@ -10,6 +10,7 @@ const Api = {
   GetProfile: '/api/v1/user/profile',
   UpdateProfile: '/api/v1/user/profile',
   ChangeEmail: '/api/v1/user/change-email',
+  ChangePassword: '/api/v1/user/change-password',
 
   // 获取用户列表
   GetUsers: '/api/v1/admin/users',
@@ -20,14 +21,17 @@ const Api = {
 // 用户信息
 export interface UserInfo {
   id: number;
+  name: string;
   username: string;
   email: string;
   role: string;
+  status: number;
 }
 
 // 用户信息
 export interface UserProfile {
   id: number;
+  name: string;
   username: string;
   email: string;
   role: string;
@@ -82,18 +86,22 @@ export interface SendVerificationCodeRequest {
   type: 'register' | 'login' | 'reset_password' | 'change_email';
 }
 
-// 修改邮箱请求
+// 修改邮箱请求（暂时简化，实际后端需要密码和验证码）
 export interface ChangeEmailRequest {
-  new_email: string;
-  password: string;
-  verification_code: string;
+  email: string;
+}
+
+// 修改密码请求
+export interface ChangePasswordRequest {
+  old_password: string;
+  new_password: string;
 }
 
 // 更新用户信息请求
 export interface UpdateProfileRequest {
+  name?: string;
   username?: string;
   email?: string;
-  password?: string;
 }
 
 export interface AdminCreateUserRequest {
@@ -139,7 +147,7 @@ export function getUserProfile() {
 }
 
 // 更新用户信息
-export function updateProfile(data: UpdateProfileRequest) {
+export function updateUserProfile(data: UpdateProfileRequest) {
   return request.put({
     url: Api.UpdateProfile,
     data,
@@ -147,9 +155,17 @@ export function updateProfile(data: UpdateProfileRequest) {
 }
 
 // 修改邮箱
-export function changeEmail(data: ChangeEmailRequest) {
+export function changeUserEmail(data: ChangeEmailRequest) {
   return request.put({
     url: Api.ChangeEmail,
+    data,
+  });
+}
+
+// 修改密码
+export function changeUserPassword(data: ChangePasswordRequest) {
+  return request.put({
+    url: Api.ChangePassword,
     data,
   });
 }

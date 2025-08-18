@@ -26,9 +26,18 @@
         </div>
       </t-row>
 
-      <t-table :data="data" :columns="COLUMNS" :row-key="rowKey" :hover="true" :pagination="pagination"
-        :selected-row-keys="selectedRowKeys" :loading="dataLoading" :header-affixed-top="headerAffixedTop"
-        @page-change="handlePageChange" @select-change="handleSelectChange">
+      <t-table
+        :data="data"
+        :columns="COLUMNS"
+        :row-key="rowKey"
+        :hover="true"
+        :pagination="pagination"
+        :selected-row-keys="selectedRowKeys"
+        :loading="dataLoading"
+        :header-affixed-top="headerAffixedTop"
+        @page-change="handlePageChange"
+        @select-change="handleSelectChange"
+      >
         <template #platform_type="{ row }">
           <t-tag :theme="getPlatformTypeTheme(row.platform_type)" variant="light">
             {{ getPlatformTypeName(row.platform_type) }}
@@ -79,8 +88,11 @@
 
         <template #current_status="{ row }">
           <t-tag v-if="row.current_status === 1" theme="success" variant="light"> 正常 </t-tag>
-          <t-popconfirm v-else-if="row.current_status === 2" content="确认启用此账号吗?"
-            @confirm="handlerUpdateAccountCurrentStatus(row)">
+          <t-popconfirm
+            v-else-if="row.current_status === 2"
+            content="确认启用此账号吗?"
+            @confirm="handlerUpdateAccountCurrentStatus(row)"
+          >
             <t-tag theme="warning" variant="light" style="cursor: pointer"> 接口异常 </t-tag>
           </t-popconfirm>
 
@@ -106,8 +118,12 @@
           <t-space size="2px">
             <t-button variant="text" size="small" theme="warning" @click="handleTest(row)"> 测试 </t-button>
             <t-button variant="text" size="small" theme="primary" @click="handleEdit(row)"> 编辑 </t-button>
-            <t-button variant="text" size="small" :theme="row.active_status === 1 ? 'warning' : 'success'"
-              @click="handleToggleActiveStatus(row)">
+            <t-button
+              variant="text"
+              size="small"
+              :theme="row.active_status === 1 ? 'warning' : 'success'"
+              @click="handleToggleActiveStatus(row)"
+            >
               {{ row.active_status === 1 ? '禁用' : '启用' }}
             </t-button>
             <t-button variant="text" size="small" theme="danger" @click="handleDelete([row])"> 删除 </t-button>
@@ -117,8 +133,14 @@
     </t-card>
 
     <!-- 创建/编辑账号弹窗 -->
-    <t-dialog v-model:visible="formVisible" :header="editingItem ? '编辑账号' : '创建账号'" width="800px" placement="center"
-      @confirm="handleFormConfirm" @cancel="handleFormCancel">
+    <t-dialog
+      v-model:visible="formVisible"
+      :header="editingItem ? '编辑账号' : '创建账号'"
+      width="800px"
+      placement="center"
+      @confirm="handleFormConfirm"
+      @cancel="handleFormCancel"
+    >
       <t-form ref="formRef" :model="formData" label-align="top" label-width="120px">
         <t-row :gutter="16">
           <t-col :span="6">
@@ -142,8 +164,10 @@
         <t-row v-if="formData.platform_type !== 'claude'" :gutter="16">
           <t-col :span="6">
             <t-form-item label="请求地址" name="request_url">
-              <t-input v-model="formData.request_url"
-                :placeholder="formData.platform_type === 'openai' ? 'https://api.openai.com/v1' : '请输入API请求地址'" />
+              <t-input
+                v-model="formData.request_url"
+                :placeholder="formData.platform_type === 'openai' ? 'https://api.openai.com/v1' : '请输入API请求地址'"
+              />
             </t-form-item>
           </t-col>
           <t-col :span="6">
@@ -156,8 +180,13 @@
         <t-row :gutter="16">
           <t-col :span="6">
             <t-form-item label="分组" name="group_id">
-              <t-select v-model="formData.group_id" placeholder="选择分组（可选）" filterable :loading="groupsLoading"
-                clearable>
+              <t-select
+                v-model="formData.group_id"
+                placeholder="选择分组（可选）"
+                filterable
+                :loading="groupsLoading"
+                clearable
+              >
                 <t-option :value="0" label="全局共享组" />
                 <t-option v-for="group in groups" :key="group.id" :value="group.id" :label="group.name" />
               </t-select>
@@ -192,8 +221,11 @@
         <t-row v-if="formData.platform_type === 'openai'" :gutter="16">
           <t-col :span="12">
             <t-form-item label="模型映射" name="model_mapping">
-              <t-textarea v-model="formData.model_mapping"
-                placeholder="请输入模型映射配置，格式：claude-haiku-20250303:gpt-4o-mini,claude-sonnet:gpt-4o" :rows="3" />
+              <t-textarea
+                v-model="formData.model_mapping"
+                placeholder="请输入模型映射配置，格式：claude-haiku-20250303:gpt-4o-mini,claude-sonnet:gpt-4o"
+                :rows="3"
+              />
               <template #tips>
                 <div class="model-mapping-tips">
                   格式：源模型:目标模型，多个映射用逗号分隔<br />
@@ -266,8 +298,12 @@
 
                 <t-input v-model="authCode" placeholder="请输入授权完成后获得的授权码" :disabled="!oauthURL" />
 
-                <t-button theme="success" :disabled="!authCode || !oauthURL" :loading="exchangeLoading"
-                  @click="handleExchangeCode">
+                <t-button
+                  theme="success"
+                  :disabled="!authCode || !oauthURL"
+                  :loading="exchangeLoading"
+                  @click="handleExchangeCode"
+                >
                   验证授权码并获取令牌
                 </t-button>
               </t-space>
@@ -289,7 +325,12 @@
     </t-dialog>
 
     <!-- 删除确认弹窗 -->
-    <t-dialog v-model:visible="deleteVisible" header="确认删除" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel">
+    <t-dialog
+      v-model:visible="deleteVisible"
+      header="确认删除"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+    >
       <p>{{ deleteConfirmText }}</p>
     </t-dialog>
   </div>
