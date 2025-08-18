@@ -111,10 +111,10 @@ web/
 - **依赖管理**: 添加新依赖后运行 `go mod tidy`
 
 ### 前端开发规范
-- **组件样式**: 必须声明 `<style scoped>`
-- **API请求**: 统一使用 `@/utils/request` 封装的axios
-- **代码检查**: 提交前自动运行lint检查
-- **开发端口**: 前端3005，自动代理后端8080
+- **组件样式**: 必须声明 `<style scoped>`  
+- **API请求**: 统一使用 `@/utils/request` 封装的axios  
+- **代码检查**: 提交前自动运行lint检查   
+- **文档参考**: [TDesign Vue3文档](https://tdesign.tencent.com/vue-next/)  
 
 ### 数据库规范
 **核心数据表**
@@ -122,6 +122,7 @@ web/
 - `accounts` - Claude账号池和使用统计  
 - `api_keys` - API密钥管理和使用监控
 - `groups` - 分组管理和权限控制
+- `logs` - 模型请求日志记录数据  
 - `api_logs` - API请求日志和统计数据
 
 ## 🐳 部署指南
