@@ -39,6 +39,10 @@ type Account struct {
 	// 关联查询
 	User  User   `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Group *Group `json:"group" gorm:"-"`
+
+	// 最近一周统计数据（不存储到数据库，运行时计算）
+	WeeklyCost  float64 `json:"weekly_cost" gorm:"-"`  // 最近一周使用费用
+	WeeklyCount int64   `json:"weekly_count" gorm:"-"` // 最近一周使用次数
 }
 
 // 账号列表请求参数
@@ -207,6 +211,12 @@ func GetAccountList(page, limit int, userID *uint) ([]Account, int64, error) {
 		}
 	}
 
+	// 批量查询最近一周的统计数据
+	if err := setWeeklyStatsForAccounts(accounts); err != nil {
+		// 如果查询失败，只记录错误但不影响主要功能
+		// 统计字段将保持默认值0
+	}
+
 	return accounts, total, nil
 }
 
@@ -240,4 +250,65 @@ func GetMaxTodayUsageCountFromAvailableAccounts(userID uint, groupID int, priori
 		Select("COALESCE(MAX(today_usage_count), 0)").
 		Scan(&maxUsageCount).Error
 	return maxUsageCount, err
+}
+
+// setWeeklyStatsForAccounts 为账号列表设置最近一周的统计数据
+func setWeeklyStatsForAccounts(accounts []Account) error {
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	// 计算本周开始时间（周一00:00:00）到现在
+	now := time.Now()
+	weekday := int(now.Weekday())
+	if weekday == 0 { // 如果是周日，调整为7
+		weekday = 7
+	}
+
+	// 计算本周一的日期
+	weekStart := now.AddDate(0, 0, -(weekday - 1))
+	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+
+	// 提取所有账号ID
+	accountIDs := make([]uint, len(accounts))
+	for i, account := range accounts {
+		accountIDs[i] = account.ID
+	}
+
+	// 查询最近一周的统计数据
+	type WeeklyStats struct {
+		AccountID  uint    `json:"account_id"`
+		TotalCost  float64 `json:"total_cost"`
+		TotalCount int64   `json:"total_count"`
+	}
+
+	var weeklyStats []WeeklyStats
+	err := DB.Table("logs").
+		Select("account_id, SUM(total_cost) as total_cost, COUNT(*) as total_count").
+		Where("account_id IN ? AND created_at >= ? AND created_at <= ?", accountIDs, weekStart, now).
+		Group("account_id").
+		Scan(&weeklyStats).Error
+
+	if err != nil {
+		return err
+	}
+
+	// 创建统计数据映射
+	statsMap := make(map[uint]WeeklyStats)
+	for _, stat := range weeklyStats {
+		statsMap[stat.AccountID] = stat
+	}
+
+	// 为每个账号设置统计数据
+	for i := range accounts {
+		if stat, exists := statsMap[accounts[i].ID]; exists {
+			accounts[i].WeeklyCost = stat.TotalCost
+			accounts[i].WeeklyCount = stat.TotalCount
+		} else {
+			accounts[i].WeeklyCost = 0
+			accounts[i].WeeklyCount = 0
+		}
+	}
+
+	return nil
 }

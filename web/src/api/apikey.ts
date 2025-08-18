@@ -33,6 +33,9 @@ export interface ApiKey {
     id: number;
     name: string;
   };
+  // 最近一周统计数据
+  weekly_cost: number; // 最近一周使用费用
+  weekly_count: number; // 最近一周使用次数
 }
 
 // API Key列表

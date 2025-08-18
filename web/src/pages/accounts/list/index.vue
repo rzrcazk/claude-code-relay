@@ -78,6 +78,14 @@
           <span>${{ (row.today_total_cost || 0).toFixed(4) }}</span>
         </template>
 
+        <template #weekly_count="{ row }">
+          <t-tag theme="default" variant="light"> {{ row.weekly_count || 0 }} </t-tag>
+        </template>
+
+        <template #weekly_cost="{ row }">
+          <span>${{ (row.weekly_cost || 0).toFixed(4) }}</span>
+        </template>
+
         <template #current_status="{ row }">
           <t-tag v-if="row.current_status === 1" theme="success" variant="light"> 正常 </t-tag>
           <t-popconfirm
@@ -424,19 +432,29 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 100,
   },
   {
+    title: '本周使用',
+    colKey: 'weekly_count',
+    width: 100,
+  },
+  {
+    title: '本周费用',
+    colKey: 'weekly_cost',
+    width: 100,
+  },
+  {
     title: '限流结束时间',
     colKey: 'rate_limit_end_time',
-    width: 160,
+    width: 180,
   },
   {
     title: '最后使用时间',
     colKey: 'last_used_time',
-    width: 160,
+    width: 180,
   },
   {
     title: '创建时间',
     colKey: 'created_at',
-    width: 160,
+    width: 180,
     cell: (h, { row }) => formatDateTime(row.created_at),
   },
   {

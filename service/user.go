@@ -290,3 +290,27 @@ func (s *UserService) AdminUpdateUserStatus(userID uint, status int) error {
 
 	return nil
 }
+
+// ChangePassword 修改密码
+func (s *UserService) ChangePassword(currentUser *model.User, oldPassword, newPassword string) error {
+	// 验证当前密码
+	if currentUser.Password != common.HashPassword(oldPassword) {
+		return errors.New("当前密码错误")
+	}
+
+	// 检查新密码是否与当前密码相同
+	if common.HashPassword(newPassword) == currentUser.Password {
+		return errors.New("新密码不能与当前密码相同")
+	}
+
+	// 更新密码
+	currentUser.Password = common.HashPassword(newPassword)
+	if err := model.UpdateUser(currentUser); err != nil {
+		return errors.New("修改密码失败")
+	}
+
+	// 记录日志
+	common.SysLog(fmt.Sprintf("用户 %s (ID: %d) 修改了密码", currentUser.Username, currentUser.ID))
+
+	return nil
+}

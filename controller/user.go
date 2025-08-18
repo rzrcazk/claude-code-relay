@@ -37,6 +37,11 @@ type ChangeEmailRequest struct {
 	VerificationCode string `json:"verification_code" binding:"required"`
 }
 
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
 type UpdateProfileRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email" binding:"omitempty,email"`
@@ -614,4 +619,46 @@ func buildMenuByRole(role string) []MenuItem {
 	}
 
 	return baseMenus
+}
+
+// ChangePassword 修改密码
+func ChangePassword(c *gin.Context) {
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  constant.InvalidParams,
+		})
+		return
+	}
+
+	user := c.MustGet("user").(*model.User)
+	userService := service.NewUserService()
+
+	err := userService.ChangePassword(user, req.OldPassword, req.NewPassword)
+	if err != nil {
+		var statusCode int
+		var code int
+		switch err.Error() {
+		case "当前密码错误":
+			statusCode = http.StatusBadRequest
+			code = constant.Unauthorized
+		case "新密码不能与当前密码相同":
+			statusCode = http.StatusBadRequest
+			code = constant.InvalidParams
+		default:
+			statusCode = http.StatusInternalServerError
+			code = constant.InternalServerError
+		}
+		c.JSON(statusCode, gin.H{
+			"error": err.Error(),
+			"code":  code,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "密码修改成功",
+		"code":    constant.Success,
+	})
 }
