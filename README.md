@@ -1,10 +1,26 @@
 # Claude Code Relay
 
-基于Go + Gin的Claude Code 镜像中转服务，采用分层架构设计。支持多账号池管理、智能负载均衡、API Key分发、使用统计和成本计算。包含完整的Vue 3管理界面，基于TDesign组件库。  
+<div align="center">
+
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Redis](https://img.shields.io/badge/Redis-7+-red.svg)](https://redis.io/)
+[![Redis](https://img.shields.io/badge/Mysql-5.7+-yellow.svg)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+
+基于Go + Gin的Claude Code 镜像中转服务，采用分层架构设计。支持多账号池管理、智能负载均衡、API Key分发、使用统计和成本计算。包含完整的Vue 3管理界面，基于TDesign组件库。   
 
 **如果此项目对您有所帮助, 请帮我点个 ⭐️ 吧~**   
 
+[English](README_EN.md) • [中文文档](README.md)   
+
+</div>
+
+---
+
 ![home.png](docs/home.png)
+
 
 ## ⚠️ 重要提醒
 使用本项目前请仔细阅读：
