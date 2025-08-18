@@ -62,7 +62,7 @@
 </template>
 <script setup lang="ts">
 import { MessagePlugin } from 'tdesign-vue-next';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { changeUserEmail, changeUserPassword } from '@/api/user';
@@ -125,37 +125,8 @@ const formatDate = (dateString: string) => {
       hour: '2-digit',
       minute: '2-digit',
     });
-  } catch (error) {
+  } catch () {
     return '暂无';
-  }
-};
-
-// 修改邮箱
-const handleChangeEmail = async ({ validateResult }: any) => {
-  if (validateResult === true) {
-    // 手动验证邮箱确认
-    if (emailForm.newEmail !== emailForm.confirmEmail) {
-      MessagePlugin.error('两次输入的邮箱不一致');
-      return;
-    }
-
-    try {
-      emailLoading.value = true;
-      await changeUserEmail({
-        email: emailForm.newEmail,
-      });
-
-      // 更新本地用户信息
-      await userStore.getUserInfo();
-
-      MessagePlugin.success('邮箱修改成功');
-      resetEmailForm();
-      activeTab.value = 'profile';
-    } catch (error) {
-      MessagePlugin.error('邮箱修改失败');
-    } finally {
-      emailLoading.value = false;
-    }
   }
 };
 
