@@ -53,6 +53,9 @@ export interface Account {
     id: number;
     name: string;
   } | null;
+  // 最近一周统计数据
+  weekly_cost: number; // 最近一周使用费用
+  weekly_count: number; // 最近一周使用次数
 }
 
 // 创建账号参数
