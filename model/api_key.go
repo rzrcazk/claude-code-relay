@@ -30,6 +30,10 @@ type ApiKey struct {
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
 	// 关联查询
 	Group *Group `json:"group" gorm:"-"`
+	
+	// 最近一周统计数据（不存储到数据库，运行时计算）
+	WeeklyCost  float64 `json:"weekly_cost" gorm:"-"`  // 最近一周使用费用
+	WeeklyCount int64   `json:"weekly_count" gorm:"-"` // 最近一周使用次数
 }
 
 type CreateApiKeyRequest struct {
@@ -183,5 +187,72 @@ func GetApiKeys(page, limit int, userID uint, groupID *uint) ([]ApiKey, int64, e
 		}
 	}
 
+	// 批量查询最近一周的统计数据
+	if err := setWeeklyStatsForApiKeys(apiKeys); err != nil {
+		// 如果查询失败，只记录错误但不影响主要功能
+		// 统计字段将保持默认值0
+	}
+
 	return apiKeys, total, nil
+}
+
+// setWeeklyStatsForApiKeys 为API Key列表设置最近一周的统计数据
+func setWeeklyStatsForApiKeys(apiKeys []ApiKey) error {
+	if len(apiKeys) == 0 {
+		return nil
+	}
+
+	// 计算本周开始时间（周一00:00:00）到现在
+	now := time.Now()
+	weekday := int(now.Weekday())
+	if weekday == 0 { // 如果是周日，调整为7
+		weekday = 7
+	}
+	
+	// 计算本周一的日期
+	weekStart := now.AddDate(0, 0, -(weekday-1))
+	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+
+	// 提取所有API Key ID
+	apiKeyIDs := make([]uint, len(apiKeys))
+	for i, apiKey := range apiKeys {
+		apiKeyIDs[i] = apiKey.ID
+	}
+
+	// 查询最近一周的统计数据
+	type WeeklyStats struct {
+		ApiKeyID   uint    `json:"api_key_id"`
+		TotalCost  float64 `json:"total_cost"`
+		TotalCount int64   `json:"total_count"`
+	}
+
+	var weeklyStats []WeeklyStats
+	err := DB.Table("logs").
+		Select("api_key_id, SUM(total_cost) as total_cost, COUNT(*) as total_count").
+		Where("api_key_id IN ? AND created_at >= ? AND created_at <= ?", apiKeyIDs, weekStart, now).
+		Group("api_key_id").
+		Scan(&weeklyStats).Error
+
+	if err != nil {
+		return err
+	}
+
+	// 创建统计数据映射
+	statsMap := make(map[uint]WeeklyStats)
+	for _, stat := range weeklyStats {
+		statsMap[stat.ApiKeyID] = stat
+	}
+
+	// 为每个API Key设置统计数据
+	for i := range apiKeys {
+		if stat, exists := statsMap[apiKeys[i].ID]; exists {
+			apiKeys[i].WeeklyCost = stat.TotalCost
+			apiKeys[i].WeeklyCount = stat.TotalCount
+		} else {
+			apiKeys[i].WeeklyCost = 0
+			apiKeys[i].WeeklyCount = 0
+		}
+	}
+
+	return nil
 }

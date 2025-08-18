@@ -36,7 +36,21 @@
           <t-tag v-else theme="danger" variant="light"> 禁用 </t-tag>
         </template>
 
-        <template #today_total_cost="{ row }"> ${{ row.today_total_cost.toFixed(4) }} </template>
+        <template #today_usage_count="{ row }">
+          <t-tag theme="default" variant="light"> {{ row.today_usage_count || 0 }} </t-tag>
+        </template>
+
+        <template #today_total_cost="{ row }">
+          <span>${{ (row.today_total_cost || 0).toFixed(4) }}</span>
+        </template>
+
+        <template #weekly_count="{ row }">
+          <t-tag theme="default" variant="light"> {{ row.weekly_count || 0 }} </t-tag>
+        </template>
+
+        <template #weekly_cost="{ row }">
+          <span>${{ (row.weekly_cost || 0).toFixed(4) }}</span>
+        </template>
 
         <template #daily_limit="{ row }">
           <t-tag theme="default" variant="light"> ${{ row.daily_limit }} </t-tag>
@@ -196,13 +210,23 @@ const COLUMNS: PrimaryTableCol<TableRowData>[] = [
     width: 140,
   },
   {
-    title: '今日使用次数',
+    title: '今日使用',
     colKey: 'today_usage_count',
     width: 140,
   },
   {
     title: '今日费用',
     colKey: 'today_total_cost',
+    width: 160,
+  },
+  {
+    title: '本周使用',
+    colKey: 'weekly_count',
+    width: 140,
+  },
+  {
+    title: '本周费用',
+    colKey: 'weekly_cost',
     width: 160,
   },
   {
