@@ -38,26 +38,6 @@
         </div>
       </t-tab-panel>
 
-      <t-tab-panel value="email" label="修改邮箱">
-        <t-form ref="emailFormRef" :model="emailForm" label-width="80px" @submit="handleChangeEmail">
-          <t-form-item label="当前邮箱">
-            <t-input :value="userInfo.email" disabled />
-          </t-form-item>
-          <t-form-item label="新邮箱" name="newEmail">
-            <t-input v-model="emailForm.newEmail" placeholder="请输入新邮箱" />
-          </t-form-item>
-          <t-form-item label="确认邮箱" name="confirmEmail">
-            <t-input v-model="emailForm.confirmEmail" placeholder="请确认新邮箱" />
-          </t-form-item>
-          <t-form-item>
-            <t-space>
-              <t-button theme="primary" type="submit" :loading="emailLoading"> 修改邮箱 </t-button>
-              <t-button variant="outline" @click="resetEmailForm"> 重置 </t-button>
-            </t-space>
-          </t-form-item>
-        </t-form>
-      </t-tab-panel>
-
       <t-tab-panel value="password" label="修改密码">
         <t-form ref="passwordFormRef" :model="passwordForm" label-width="80px" @submit="handleChangePassword">
           <t-form-item label="当前密码" name="oldPassword">
