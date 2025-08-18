@@ -16,7 +16,7 @@ A Claude Code API relay service based on Go + Gin with layered architecture desi
 
 **If this project helps you, please give me a ⭐️!**   
 
-[English](README_EN.md) • [中文文档](README.md)   
+[Chinese](README.md)  •  [English](README_EN.md)     
 
 </div>
 

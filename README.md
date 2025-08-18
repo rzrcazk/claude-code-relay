@@ -13,7 +13,7 @@
 
 **如果此项目对您有所帮助, 请帮我点个 ⭐️ 吧~**   
 
-[English](README_EN.md) • [中文文档](README.md)   
+[英文文档](README_EN.md) • [中文文档](README.md)   
 
 </div>
 
