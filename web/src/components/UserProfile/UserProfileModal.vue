@@ -65,7 +65,7 @@ import { MessagePlugin } from 'tdesign-vue-next';
 import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { changeUserEmail, changeUserPassword } from '@/api/user';
+import { changeUserPassword } from '@/api/user';
 import { useUserStore } from '@/store';
 
 interface Props {

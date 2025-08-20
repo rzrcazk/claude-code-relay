@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
@@ -63,4 +64,37 @@ func CloseIO(c io.Closer) {
 	if nil != err {
 		log.Println(err)
 	}
+}
+
+// GetInstanceID 获取实例ID，如果不存在则生成61位随机字符串并存储到Redis
+func GetInstanceID() string {
+	const instanceKey = "system:instance_id"
+	ctx := context.Background()
+
+	// 从Redis获取
+	if RDB != nil {
+		id, err := RDB.Get(ctx, instanceKey).Result()
+		if err == nil && id != "" {
+			return id
+		}
+	}
+
+	// 生成61位随机字符串
+	bytes := make([]byte, 31) // 31字节 * 2 = 62个十六进制字符，取前61位
+	if _, err := rand.Read(bytes); err != nil {
+		SysError("Failed to generate random bytes for instance ID: " + err.Error())
+		return ""
+	}
+	newID := hex.EncodeToString(bytes)[:61] // 取前61位
+
+	// 存储到Redis（永久存储）
+	if RDB != nil {
+		err := RDB.Set(ctx, instanceKey, newID, 0).Err()
+		if err != nil {
+			SysError("Failed to store instance ID to Redis: " + err.Error())
+		}
+	}
+
+	SysLog("Generated new instance ID: " + newID)
+	return newID
 }

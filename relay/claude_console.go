@@ -120,6 +120,7 @@ func parseConsoleRequest(c *gin.Context) ([]byte, error) {
 	}
 
 	body, _ = sjson.SetBytes(body, "stream", true)
+	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID())
 	return body, nil
 }
 

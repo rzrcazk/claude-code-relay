@@ -157,6 +157,7 @@ func parseAndValidateRequest(c *gin.Context) (*requestData, error) {
 	}
 
 	body, _ = sjson.SetBytes(body, "stream", true)
+	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID())
 
 	modelName := gjson.GetBytes(body, "model").String()
 	if modelName == "" {

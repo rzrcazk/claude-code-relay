@@ -26,6 +26,17 @@ type StreamCopyWriter struct {
 
 // Write 实现 io.Writer 接口，实现边转发边解析
 func (w *StreamCopyWriter) Write(p []byte) (n int, err error) {
+	// 空指针和空数据校验
+	if w == nil {
+		return 0, io.ErrShortWrite
+	}
+	if w.dst == nil {
+		return 0, io.ErrShortWrite
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+
 	// 先写入目标，实现真正的流式转发
 	n, err = w.dst.Write(p)
 	if err != nil {
@@ -55,7 +66,9 @@ func (w *StreamCopyWriter) Write(p []byte) (n int, err error) {
 
 	// 处理完整的行
 	for _, line := range lines {
-		w.parseLine(line)
+		if strings.TrimSpace(line) != "" { // 跳过空行
+			w.parseLine(line)
+		}
 	}
 
 	// 清空缓冲区
@@ -66,6 +79,17 @@ func (w *StreamCopyWriter) Write(p []byte) (n int, err error) {
 
 // parseLine 解析单行数据提取token使用量
 func (w *StreamCopyWriter) parseLine(line string) {
+	// 空指针校验
+	if w == nil || w.usage == nil {
+		return
+	}
+
+	// 输入完整性校验
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return
+	}
+
 	var dataJSON string
 
 	// 兼容两种SSE格式：
@@ -80,10 +104,20 @@ func (w *StreamCopyWriter) parseLine(line string) {
 		return
 	}
 
-	// 跳过空data行
-	if strings.TrimSpace(dataJSON) == "" {
+	// 跳过空data行和结束信号
+	dataJSON = strings.TrimSpace(dataJSON)
+	if dataJSON == "" || dataJSON == "[DONE]" {
 		return
 	}
+
+	// 基本JSON格式校验
+	if !strings.HasPrefix(dataJSON, "{") || !strings.HasSuffix(dataJSON, "}") {
+		SysLog("Invalid JSON format in stream line: " + line)
+		return
+	}
+
+	// 打印每一行的流式输出结果
+	//SysLog("Stream Line: " + line)
 
 	eventType := gjson.Get(dataJSON, "type").String()
 
@@ -136,6 +170,14 @@ func (w *StreamCopyWriter) parseLine(line string) {
 
 // ParseStreamResponse 解析流式响应并提取token使用量 - 实现真正的流式转发
 func ParseStreamResponse(dst io.Writer, src io.Reader) (*TokenUsage, error) {
+	// 参数校验
+	if dst == nil {
+		return nil, io.ErrShortWrite
+	}
+	if src == nil {
+		return nil, io.ErrUnexpectedEOF
+	}
+
 	usage := &TokenUsage{}
 
 	// 创建流式拷贝写入器
@@ -163,7 +205,7 @@ func ParseStreamResponse(dst io.Writer, src io.Reader) (*TokenUsage, error) {
 	}
 
 	// 处理最后一行（如果有的话）
-	if streamWriter.remainder != "" {
+	if streamWriter != nil && streamWriter.remainder != "" {
 		streamWriter.parseLine(streamWriter.remainder)
 	}
 
