@@ -160,7 +160,7 @@ type OpenAITargetConfig struct {
 }
 
 // HandleOpenAIRequest 处理 OpenAI 请求的中转
-func HandleOpenAIRequest(c *gin.Context, account *model.Account) {
+func HandleOpenAIRequest(c *gin.Context, account *model.Account, requestBody []byte) {
 	// 记录请求开始时间用于计算耗时
 	startTime := time.Now()
 
@@ -171,21 +171,9 @@ func HandleOpenAIRequest(c *gin.Context, account *model.Account) {
 	}
 	ctx := c.Request.Context()
 
-	// 读取请求体
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"type":    "request_body_error",
-				"message": "Failed to read request body: " + err.Error(),
-			},
-		})
-		return
-	}
-
 	// 解析Claude请求
 	var claudeReq ClaudeRequest
-	if err := json.Unmarshal(body, &claudeReq); err != nil {
+	if err := json.Unmarshal(requestBody, &claudeReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": map[string]interface{}{
 				"type":    "json_parse_error",

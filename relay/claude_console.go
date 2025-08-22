@@ -44,13 +44,14 @@ var (
 )
 
 // HandleClaudeConsoleRequest 处理Claude Console平台的请求
-func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account) {
+func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestBody []byte) {
 	startTime := time.Now()
 
 	apiKey := extractConsoleAPIKey(c)
 
-	body, err := parseConsoleRequest(c)
+	body, err := parseConsoleRequest(requestBody)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, appendConsoleErrorMessage(consoleErrRequestBodyRead, err.Error()))
 		return
 	}
 
@@ -112,15 +113,9 @@ func extractConsoleAPIKey(c *gin.Context) *model.ApiKey {
 }
 
 // parseConsoleRequest 解析Console请求
-func parseConsoleRequest(c *gin.Context) ([]byte, error) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, appendConsoleErrorMessage(consoleErrRequestBodyRead, err.Error()))
-		return nil, err
-	}
-
-	body, _ = sjson.SetBytes(body, "stream", true)
-	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID())
+func parseConsoleRequest(requestBody []byte) ([]byte, error) {
+	body, _ := sjson.SetBytes(requestBody, "stream", true)                     // 设置流式请求
+	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置用户ID为实例ID
 	return body, nil
 }
 
