@@ -218,7 +218,6 @@ func (s *CronService) recoverAbnormalAccounts() {
 	}
 
 	if len(abnormalAccounts) == 0 {
-		common.SysLog("No abnormal accounts found for recovery testing")
 		return
 	}
 
@@ -259,8 +258,6 @@ func (s *CronService) testAndRecoverAccount(account *model.Account) bool {
 		return false
 	}
 
-	common.SysLog(fmt.Sprintf("Testing account %s (ID: %d) with status code: %d, error: %s", account.Name, account.ID, statusCode, err))
-
 	// 检查测试结果：状态码在200-300之间且无错误视为成功
 	if err == "" && statusCode >= 200 && statusCode < 300 {
 		// 测试成功，恢复账号状态为正常
@@ -270,15 +267,9 @@ func (s *CronService) testAndRecoverAccount(account *model.Account) bool {
 			return false
 		}
 		return true
-	} else {
-		// 测试失败，记录日志但不改变状态
-		if err != "" {
-			common.SysLog(fmt.Sprintf("Account %s (ID: %d) test failed: %s", account.Name, account.ID, err))
-		} else {
-			common.SysLog(fmt.Sprintf("Account %s (ID: %d) test failed with status code: %d", account.Name, account.ID, statusCode))
-		}
-		return false
 	}
+
+	return false
 }
 
 // ManualCleanExpiredLogs 手动清理过期日志（用于测试或管理员操作）
@@ -310,7 +301,6 @@ func (s *CronService) checkRateLimitExpiredAccounts() {
 	}
 
 	if len(rateLimitedAccounts) == 0 {
-		common.SysLog("No rate limited accounts found for checking")
 		return
 	}
 

@@ -81,8 +81,6 @@ func main() {
 
 	// 设置API前后端路由
 	router.SetAPIRouter(server)
-	// 设置Claude Code专用路由
-	router.SetClaudeCodeRouter(server)
 
 	// 启动服务器
 	port := os.Getenv("PORT")
