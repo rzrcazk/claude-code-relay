@@ -49,17 +49,14 @@ const (
 
 // 错误类型定义
 var (
-	errRequestBody     = gin.H{"error": map[string]interface{}{"type": "request_error", "message": "Incorrect request body"}}
-	errMissingModel    = gin.H{"error": map[string]interface{}{"type": "request_error", "message": "The model field is missing in the request body"}}
-	errModelNotAllowed = gin.H{"error": map[string]interface{}{"type": "request_error", "message": "This model is not allowed."}}
-	errAuthFailed      = gin.H{"error": map[string]interface{}{"type": "authentication_error", "message": "Failed to get valid access token"}}
-	errCreateRequest   = gin.H{"error": map[string]interface{}{"type": "internal_server_error", "message": "Failed to create request"}}
-	errProxyConfig     = gin.H{"error": map[string]interface{}{"type": "proxy_configuration_error", "message": "Invalid proxy URI"}}
-	errTimeout         = gin.H{"error": map[string]interface{}{"type": "timeout_error", "message": "Request was canceled or timed out"}}
-	errNetworkError    = gin.H{"error": map[string]interface{}{"type": "network_error", "message": "Failed to execute request"}}
-	errDecompression   = gin.H{"error": map[string]interface{}{"type": "decompression_error", "message": "Failed to create decompressor"}}
-	errResponseRead    = gin.H{"error": map[string]interface{}{"type": "response_read_error", "message": "Failed to read error response"}}
-	errResponseError   = gin.H{"error": map[string]interface{}{"type": "response_error", "message": "Request failed"}}
+	errAuthFailed    = gin.H{"error": map[string]interface{}{"type": "authentication_error", "message": "Failed to get valid access token"}}
+	errCreateRequest = gin.H{"error": map[string]interface{}{"type": "internal_server_error", "message": "Failed to create request"}}
+	errProxyConfig   = gin.H{"error": map[string]interface{}{"type": "proxy_configuration_error", "message": "Invalid proxy URI"}}
+	errTimeout       = gin.H{"error": map[string]interface{}{"type": "timeout_error", "message": "Request was canceled or timed out"}}
+	errNetworkError  = gin.H{"error": map[string]interface{}{"type": "network_error", "message": "Failed to execute request"}}
+	errDecompression = gin.H{"error": map[string]interface{}{"type": "decompression_error", "message": "Failed to create decompressor"}}
+	errResponseRead  = gin.H{"error": map[string]interface{}{"type": "response_read_error", "message": "Failed to read error response"}}
+	errResponseError = gin.H{"error": map[string]interface{}{"type": "response_error", "message": "Request failed"}}
 )
 
 // OAuthTokenResponse 表示OAuth token刷新响应
@@ -70,21 +67,12 @@ type OAuthTokenResponse struct {
 }
 
 // HandleClaudeRequest 处理Claude官方API平台的请求
-func HandleClaudeRequest(c *gin.Context, account *model.Account) {
+func HandleClaudeRequest(c *gin.Context, account *model.Account, requestBody []byte) {
 	startTime := time.Now()
 
 	apiKey := extractAPIKey(c)
 
-	requestData, err := parseAndValidateRequest(c)
-	if err != nil {
-		return
-	}
-
-	if apiKey != nil {
-		if err := validateModelRestriction(c, apiKey, requestData.ModelName); err != nil {
-			return
-		}
-	}
+	requestData := prepareRequestBody(requestBody)
 
 	accessToken, err := getValidAccessToken(account)
 	if err != nil {
@@ -136,8 +124,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account) {
 
 // requestData 封装请求数据
 type requestData struct {
-	Body      []byte
-	ModelName string
+	Body []byte
 }
 
 // extractAPIKey 从上下文中提取API Key
@@ -148,41 +135,12 @@ func extractAPIKey(c *gin.Context) *model.ApiKey {
 	return nil
 }
 
-// parseAndValidateRequest 解析并验证请求
-func parseAndValidateRequest(c *gin.Context) (*requestData, error) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, errRequestBody)
-		return nil, err
-	}
+// prepareRequestBody 准备请求体，添加必要的字段
+func prepareRequestBody(requestBody []byte) *requestData {
+	body, _ := sjson.SetBytes(requestBody, "stream", true)                     // 强制流式输出
+	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置固定的用户ID
 
-	body, _ = sjson.SetBytes(body, "stream", true)
-	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID())
-
-	modelName := gjson.GetBytes(body, "model").String()
-	if modelName == "" {
-		c.JSON(http.StatusServiceUnavailable, errMissingModel)
-		return nil, errors.New("missing model")
-	}
-
-	return &requestData{Body: body, ModelName: modelName}, nil
-}
-
-// validateModelRestriction 验证模型限制
-func validateModelRestriction(c *gin.Context, apiKey *model.ApiKey, modelName string) error {
-	if apiKey.ModelRestriction == "" {
-		return nil
-	}
-
-	allowedModels := strings.Split(apiKey.ModelRestriction, ",")
-	for _, allowedModel := range allowedModels {
-		if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
-			return nil
-		}
-	}
-
-	c.JSON(http.StatusForbidden, errModelNotAllowed)
-	return errors.New("model not allowed")
+	return &requestData{Body: body}
 }
 
 // createHTTPClient 创建HTTP客户端

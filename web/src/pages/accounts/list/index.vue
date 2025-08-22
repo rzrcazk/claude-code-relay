@@ -237,6 +237,26 @@
           </t-col>
         </t-row>
 
+        <!-- 模型限制配置 -->
+        <t-row :gutter="16">
+          <t-col :span="12">
+            <t-form-item label="模型限制" name="model_restriction">
+              <t-textarea
+                v-model="formData.model_restriction"
+                placeholder="请输入允许使用的模型列表，多个模型用逗号分隔，留空表示无限制"
+                :rows="2"
+              />
+              <template #tips>
+                <div class="model-mapping-tips">
+                  指定该账号允许使用的模型列表，空值表示无限制<br />
+                  示例：claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022<br />
+                  注意：此限制优先级低于API Key的模型限制
+                </div>
+              </template>
+            </t-form-item>
+          </t-col>
+        </t-row>
+
         <t-row :gutter="16">
           <t-col :span="4">
             <t-form-item label="是否MAX账号" name="is_max">
@@ -500,6 +520,7 @@ const formData = reactive<AccountCreateParams & AccountUpdateParams>({
   enable_proxy: false,
   proxy_uri: '',
   model_mapping: '',
+  model_restriction: '',
   active_status: 1,
   is_max: false,
   access_token: '',
@@ -642,6 +663,7 @@ const handleCreate = () => {
     enable_proxy: false,
     proxy_uri: '',
     model_mapping: '',
+    model_restriction: '',
     active_status: 1,
     is_max: false,
     access_token: '',
@@ -671,6 +693,7 @@ const handleEdit = (item: Account) => {
     enable_proxy: item.enable_proxy,
     proxy_uri: item.proxy_uri || '',
     model_mapping: item.model_mapping || '',
+    model_restriction: item.model_restriction || '',
     active_status: item.active_status,
     is_max: item.is_max,
     access_token: item.access_token || '', // 现在回填访问令牌
@@ -713,6 +736,7 @@ const handleFormConfirm = async () => {
         enable_proxy: formData.enable_proxy,
         proxy_uri: formData.proxy_uri,
         model_mapping: formData.model_mapping,
+        model_restriction: formData.model_restriction,
         active_status: formData.active_status,
         is_max: formData.is_max,
         access_token: formData.access_token,
@@ -734,6 +758,7 @@ const handleFormConfirm = async () => {
         enable_proxy: formData.enable_proxy,
         proxy_uri: formData.proxy_uri,
         model_mapping: formData.model_mapping,
+        model_restriction: formData.model_restriction,
         active_status: formData.active_status,
         is_max: formData.is_max,
         access_token: formData.access_token,

@@ -7,8 +7,11 @@ import (
 	"claude-code-relay/relay"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type ExchangeRequest struct {
@@ -91,6 +94,23 @@ func GetMessages(c *gin.Context) {
 	apiKey, _ := c.Get("api_key")
 	keyInfo := apiKey.(*model.ApiKey)
 
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "请求参数异常",
+			"code":    constant.InternalServerError,
+		})
+		return
+	}
+
+	modelName := gjson.GetBytes(body, "model").String()
+	if modelName == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"message": "missing model",
+			"code":    constant.InternalServerError,
+		})
+	}
+
 	// 根据API Key的分组ID查询可用账号列表
 	accounts, err := model.GetAvailableAccountsByGroupID(keyInfo.GroupID)
 	if err != nil {
@@ -101,25 +121,35 @@ func GetMessages(c *gin.Context) {
 		return
 	}
 
-	if len(accounts) == 0 {
-		c.JSON(http.StatusForbidden, gin.H{
-			"message": "没有可用的账号",
-			"code":    constant.NotFound,
-		})
+	// 根据模型权限过滤账号
+	filteredAccounts := filterAccountsByModelPermission(accounts, keyInfo, modelName)
+
+	if len(filteredAccounts) == 0 {
+		if len(accounts) == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"message": "没有可用的账号",
+				"code":    constant.NotFound,
+			})
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{
+				"message": "没有权限访问模型: " + modelName,
+				"code":    constant.Forbidden,
+			})
+		}
 		return
 	}
 
 	// 选择第一个账号（已按优先级和使用次数排序）
-	selectedAccount := accounts[0]
+	selectedAccount := filteredAccounts[0]
 
 	// 根据平台类型路由到不同的处理器
 	switch selectedAccount.PlatformType {
 	case constant.PlatformClaude:
-		relay.HandleClaudeRequest(c, &selectedAccount)
+		relay.HandleClaudeRequest(c, &selectedAccount, body)
 	case constant.PlatformClaudeConsole:
-		relay.HandleClaudeConsoleRequest(c, &selectedAccount)
+		relay.HandleClaudeConsoleRequest(c, &selectedAccount, body)
 	case constant.PlatformOpenAI:
-		relay.HandleOpenAIRequest(c, &selectedAccount)
+		relay.HandleOpenAIRequest(c, &selectedAccount, body)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "不支持的平台类型: " + selectedAccount.PlatformType,
@@ -228,4 +258,56 @@ func executeAccountTest(account *model.Account) TestAccountResponse {
 	}
 
 	return testResult
+}
+
+// filterAccountsByModelPermission 根据模型权限过滤账号列表
+func filterAccountsByModelPermission(accounts []model.Account, apiKey *model.ApiKey, modelName string) []model.Account {
+	// 首先检查API Key的模型限制（优先级最高）
+	if apiKey.ModelRestriction != "" {
+		// 解析API Key允许的模型列表
+		allowedModels := strings.Split(apiKey.ModelRestriction, ",")
+
+		// 检查当前模型是否在API Key允许列表中
+		isModelAllowed := false
+		for _, allowedModel := range allowedModels {
+			if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
+				isModelAllowed = true
+				break
+			}
+		}
+
+		// 如果API Key不允许此模型，直接返回空列表
+		if !isModelAllowed {
+			return []model.Account{}
+		}
+	}
+
+	// API Key允许此模型或没有限制，继续检查账号级别的模型限制
+	var filteredAccounts []model.Account
+	for _, account := range accounts {
+		// 如果账号没有模型限制，直接加入列表
+		if account.ModelRestriction == "" {
+			filteredAccounts = append(filteredAccounts, account)
+			continue
+		}
+
+		// 解析账号允许的模型列表
+		accountAllowedModels := strings.Split(account.ModelRestriction, ",")
+
+		// 检查当前模型是否在账号允许列表中
+		isAccountModelAllowed := false
+		for _, allowedModel := range accountAllowedModels {
+			if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
+				isAccountModelAllowed = true
+				break
+			}
+		}
+
+		// 如果账号允许此模型，加入列表
+		if isAccountModelAllowed {
+			filteredAccounts = append(filteredAccounts, account)
+		}
+	}
+
+	return filteredAccounts
 }
