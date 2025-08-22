@@ -169,6 +169,8 @@ docker-compose up -d
 
 ### 二进制部署
 
+可以在 [Releases](https://github.com/RipperTs/claude-code-relay/releases) 页面直接下载最新的二进制文件, 或者按照下面方式自行编译构建。
+
 **构建多平台版本**
 ```bash
 # 使用Makefile构建
@@ -178,7 +180,12 @@ make build
 ls out/
 ```
 
-**生产环境启动**
+**生产环境启动**   
+
+将 [.env.example](.env.example) 文件复制为 `.env` 文件，并根据实际情况修改配置。   
+
+然后放置在与 `claude-code-relay` 二进制文件同一目录下。   
+
 ```bash
 # 设置必需环境变量
 export SESSION_SECRET=$(openssl rand -base64 32)
