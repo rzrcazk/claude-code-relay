@@ -19,6 +19,14 @@ func SetAPIRouter(server *gin.Engine) {
 		})
 	})
 
+	// Claude Code 路由
+	claude := server.Group("/claude-code")
+	claude.Use(middleware.ClaudeCodeAuth())
+	{
+		// 对话接口
+		claude.POST("/v1/messages", controller.GetMessages)
+	}
+
 	// API路由组
 	api := server.Group("/api/v1")
 	api.Use(middleware.RateLimit(300, time.Minute))
@@ -143,6 +151,13 @@ func SetAPIRouter(server *gin.Engine) {
 		// 如果是 API 请求，返回404
 		if strings.HasPrefix(c.Request.URL.Path, "/api/") || strings.HasPrefix(c.Request.URL.Path, "/health") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "API not found"})
+			return
+		}
+
+		// 如果是 claude-code 路径但不是已定义的路由，返回空白200响应
+		if strings.HasPrefix(c.Request.URL.Path, "/claude-code/") {
+			// 未定义的claude-code路由返回空白200
+			c.Status(200)
 			return
 		}
 
