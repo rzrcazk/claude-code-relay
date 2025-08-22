@@ -262,28 +262,52 @@ func executeAccountTest(account *model.Account) TestAccountResponse {
 
 // filterAccountsByModelPermission 根据模型权限过滤账号列表
 func filterAccountsByModelPermission(accounts []model.Account, apiKey *model.ApiKey, modelName string) []model.Account {
-	// 如果API Key没有模型限制，返回所有账号
-	if apiKey.ModelRestriction == "" {
-		return accounts
-	}
+	// 首先检查API Key的模型限制（优先级最高）
+	if apiKey.ModelRestriction != "" {
+		// 解析API Key允许的模型列表
+		allowedModels := strings.Split(apiKey.ModelRestriction, ",")
 
-	// 解析允许的模型列表
-	allowedModels := strings.Split(apiKey.ModelRestriction, ",")
+		// 检查当前模型是否在API Key允许列表中
+		isModelAllowed := false
+		for _, allowedModel := range allowedModels {
+			if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
+				isModelAllowed = true
+				break
+			}
+		}
 
-	// 检查当前模型是否在允许列表中
-	isModelAllowed := false
-	for _, allowedModel := range allowedModels {
-		if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
-			isModelAllowed = true
-			break
+		// 如果API Key不允许此模型，直接返回空列表
+		if !isModelAllowed {
+			return []model.Account{}
 		}
 	}
 
-	// 如果模型不被允许，返回空列表
-	if !isModelAllowed {
-		return []model.Account{}
+	// API Key允许此模型或没有限制，继续检查账号级别的模型限制
+	var filteredAccounts []model.Account
+	for _, account := range accounts {
+		// 如果账号没有模型限制，直接加入列表
+		if account.ModelRestriction == "" {
+			filteredAccounts = append(filteredAccounts, account)
+			continue
+		}
+
+		// 解析账号允许的模型列表
+		accountAllowedModels := strings.Split(account.ModelRestriction, ",")
+
+		// 检查当前模型是否在账号允许列表中
+		isAccountModelAllowed := false
+		for _, allowedModel := range accountAllowedModels {
+			if strings.EqualFold(strings.TrimSpace(allowedModel), modelName) {
+				isAccountModelAllowed = true
+				break
+			}
+		}
+
+		// 如果账号允许此模型，加入列表
+		if isAccountModelAllowed {
+			filteredAccounts = append(filteredAccounts, account)
+		}
 	}
 
-	// 模型被允许，返回所有账号
-	return accounts
+	return filteredAccounts
 }

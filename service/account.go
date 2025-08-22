@@ -54,23 +54,24 @@ func (s *AccountService) CreateAccount(req *model.CreateAccountRequest, userID u
 	}
 
 	account := &model.Account{
-		Name:            req.Name,
-		PlatformType:    req.PlatformType,
-		RequestURL:      req.RequestURL,
-		SecretKey:       req.SecretKey,
-		GroupID:         req.GroupID,
-		Priority:        req.Priority,
-		Weight:          req.Weight,
-		EnableProxy:     req.EnableProxy,
-		ProxyURI:        req.ProxyURI,
-		ModelMapping:    req.ModelMapping,
-		ActiveStatus:    req.ActiveStatus,
-		IsMax:           req.IsMax,
-		AccessToken:     req.AccessToken,
-		RefreshToken:    req.RefreshToken,
-		ExpiresAt:       req.ExpiresAt,
-		TodayUsageCount: todayUsageCount,
-		UserID:          userID,
+		Name:             req.Name,
+		PlatformType:     req.PlatformType,
+		RequestURL:       req.RequestURL,
+		SecretKey:        req.SecretKey,
+		GroupID:          req.GroupID,
+		Priority:         req.Priority,
+		Weight:           req.Weight,
+		EnableProxy:      req.EnableProxy,
+		ProxyURI:         req.ProxyURI,
+		ModelMapping:     req.ModelMapping,
+		ModelRestriction: req.ModelRestriction,
+		ActiveStatus:     req.ActiveStatus,
+		IsMax:            req.IsMax,
+		AccessToken:      req.AccessToken,
+		RefreshToken:     req.RefreshToken,
+		ExpiresAt:        req.ExpiresAt,
+		TodayUsageCount:  todayUsageCount,
+		UserID:           userID,
 	}
 
 	if err := model.CreateAccount(account); err != nil {
@@ -114,6 +115,7 @@ func (s *AccountService) UpdateAccount(id uint, req *model.UpdateAccountRequest,
 	account.EnableProxy = req.EnableProxy
 	account.ProxyURI = req.ProxyURI
 	account.ModelMapping = req.ModelMapping
+	account.ModelRestriction = req.ModelRestriction
 	account.ActiveStatus = req.ActiveStatus
 	account.IsMax = req.IsMax
 
