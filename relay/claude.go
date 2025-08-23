@@ -56,7 +56,6 @@ var (
 	errNetworkError  = gin.H{"error": map[string]interface{}{"type": "network_error", "message": "Failed to execute request"}}
 	errDecompression = gin.H{"error": map[string]interface{}{"type": "decompression_error", "message": "Failed to create decompressor"}}
 	errResponseRead  = gin.H{"error": map[string]interface{}{"type": "response_read_error", "message": "Failed to read error response"}}
-	errResponseError = gin.H{"error": map[string]interface{}{"type": "response_error", "message": "Request failed"}}
 )
 
 // OAuthTokenResponse 表示OAuth token刷新响应
@@ -277,19 +276,13 @@ func handleErrorResponse(c *gin.Context, resp *http.Response, responseReader io.
 		return
 	}
 
-	log.Printf("❌ 错误响应内容: %s", string(responseBody))
+	log.Printf("❌ 状态码: %s, 错误响应内容: %s", strconv.Itoa(resp.StatusCode), string(responseBody))
 
 	c.Status(resp.StatusCode)
 	copyResponseHeaders(c, resp)
 
 	handleRateLimit(resp, responseBody, account)
-
-	c.JSON(http.StatusServiceUnavailable, gin.H{
-		"error": map[string]interface{}{
-			"type":    "response_error",
-			"message": "Request failed with status " + strconv.Itoa(resp.StatusCode),
-		},
-	})
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), responseBody)
 }
 
 // copyResponseHeaders 复制响应头
