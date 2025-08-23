@@ -39,8 +39,6 @@ var (
 	consoleErrTimeout         = gin.H{"error": map[string]interface{}{"type": "timeout_error", "message": "Request was canceled or timed out"}}
 	consoleErrNetworkError    = gin.H{"error": map[string]interface{}{"type": "network_error", "message": "Failed to execute request"}}
 	consoleErrDecompression   = gin.H{"error": map[string]interface{}{"type": "decompression_error", "message": "Failed to create decompressor"}}
-	consoleErrResponseRead    = gin.H{"error": map[string]interface{}{"type": "response_read_error", "message": "Failed to read error response"}}
-	consoleErrResponseError   = gin.H{"error": map[string]interface{}{"type": "response_error", "message": "Request failed"}}
 )
 
 // HandleClaudeConsoleRequest 处理Claude Console平台的请求
@@ -74,19 +72,6 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestB
 	}
 	defer common.CloseIO(resp.Body)
 
-	accountService := service.NewAccountService()
-
-	if resp.StatusCode >= consoleStatusBadRequest {
-		accountService.UpdateAccountStatus(account, resp.StatusCode, nil)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": map[string]interface{}{
-				"type":    "response_error",
-				"message": "Request failed with status " + strconv.Itoa(resp.StatusCode),
-			},
-		})
-		return
-	}
-
 	responseReader, err := createConsoleResponseReader(resp)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrDecompression, err.Error()))
@@ -95,12 +80,22 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestB
 
 	usageTokens := handleConsoleSuccessResponse(c, resp, responseReader)
 
-	go accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
+	// 更新账号状态
+	accountService := service.NewAccountService()
+	accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
 
+	// 处理错误响应
+	if resp.StatusCode >= consoleStatusBadRequest {
+		handleConsoleErrorResponse(c, resp, responseReader)
+		return
+	}
+
+	// 更新API Key状态
 	if apiKey != nil {
 		go service.UpdateApiKeyStatus(apiKey, resp.StatusCode, usageTokens)
 	}
 
+	// 保存请求日志
 	saveConsoleRequestLog(startTime, apiKey, account, resp.StatusCode, usageTokens)
 }
 
@@ -251,6 +246,10 @@ func createConsoleResponseReader(resp *http.Response) (io.Reader, error) {
 
 // handleConsoleSuccessResponse 处理Console成功响应
 func handleConsoleSuccessResponse(c *gin.Context, resp *http.Response, responseReader io.Reader) *common.TokenUsage {
+	if (resp.StatusCode < consoleStatusOK || resp.StatusCode >= consoleStatusBadRequest) || responseReader == nil {
+		return nil
+	}
+
 	c.Status(resp.StatusCode)
 	copyConsoleResponseHeaders(c, resp)
 	setConsoleStreamResponseHeaders(c)
@@ -304,6 +303,22 @@ func appendConsoleErrorMessage(baseError gin.H, message string) gin.H {
 	errorMap := baseError["error"].(map[string]interface{})
 	errorMap["message"] = errorMap["message"].(string) + ": " + message
 	return gin.H{"error": errorMap}
+}
+
+// handleConsoleErrorResponse 处理错误响应
+func handleConsoleErrorResponse(c *gin.Context, resp *http.Response, responseReader io.Reader) {
+	responseBody, err := io.ReadAll(responseReader)
+	if err != nil {
+		log.Printf("❌ 读取错误响应失败: %v", err)
+		c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(errResponseRead, err.Error()))
+		return
+	}
+
+	log.Printf("❌ 状态码: %s, 错误响应内容: %s", strconv.Itoa(resp.StatusCode), string(responseBody))
+
+	c.Status(resp.StatusCode)
+	copyConsoleResponseHeaders(c, resp)
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), responseBody)
 }
 
 // TestHandleClaudeConsoleRequest 测试处理Claude Console请求的函数

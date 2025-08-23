@@ -267,8 +267,6 @@ async function handleSearch() {
     nextTick(() => {
       renderChart();
     });
-
-    MessagePlugin.success('查询成功');
   } catch (error: any) {
     console.error('查询失败:', error);
     MessagePlugin.error(error.message || '查询失败');
