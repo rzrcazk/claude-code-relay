@@ -1,6 +1,9 @@
 package common
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // TestRequestBodyTemplate 测试用的标准请求体模板
 const TestRequestBodyTemplate = `{
@@ -55,7 +58,7 @@ func getGlobalClaudeCodeHeaders() map[string]string {
 		"x-stainless-helper-method":                 "stream",
 		"x-app":                                     "cli",
 		"User-Agent":                                "claude-cli/1.0.44 (external, cli)",
-		"anthropic-beta":                            "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14,context-1m-2025-08-07,code-execution-2025-05-22,files-api-2025-04-14,computer-use-2025-01-24",
+		"anthropic-beta":                            "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
 		"X-Stainless-Runtime-Version":               "v20.18.1",
 		"anthropic-dangerous-direct-browser-access": "true",
 	}
@@ -63,7 +66,7 @@ func getGlobalClaudeCodeHeaders() map[string]string {
 
 // MergeHeaders 合并全局Claude Code请求头和用户提供的请求头
 // 用户提供的头部优先级更高，可以覆盖全局头部
-func MergeHeaders(headers map[string]string) map[string]string {
+func MergeHeaders(headers map[string]string, anthropicBeta string) map[string]string {
 	globalHeaders := getGlobalClaudeCodeHeaders()
 
 	result := make(map[string]string, len(globalHeaders)+len(headers))
@@ -75,6 +78,15 @@ func MergeHeaders(headers map[string]string) map[string]string {
 	// 用户提供的头部优先级更高，可以覆盖全局头部
 	for k, v := range headers {
 		result[k] = v
+	}
+
+	// 使用原始的 anthropic-beta 请求头（如果存在）
+	if anthropicBeta != "" {
+		if strings.Contains(anthropicBeta, "oauth-") {
+			result["anthropic-beta"] = anthropicBeta
+		} else {
+			result["anthropic-beta"] = "oauth-2025-04-20," + anthropicBeta
+		}
 	}
 
 	return result

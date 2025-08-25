@@ -179,20 +179,24 @@ func copyConsoleRequestHeaders(c *gin.Context, req *http.Request) {
 
 // setConsoleAPIHeaders 设置Console API请求头
 func setConsoleAPIHeaders(req *http.Request, secretKey string) {
-	fixedHeaders := buildConsoleAPIHeaders(secretKey)
+	// 获取 anthropic-beta 的请求头参数
+	anthropicBeta := req.Header.Get("anthropic-beta")
+
+	// 构建并设置固定请求头
+	fixedHeaders := buildConsoleAPIHeaders(secretKey, anthropicBeta)
 	for name, value := range fixedHeaders {
 		req.Header.Set(name, value)
 	}
 }
 
 // buildConsoleAPIHeaders 构建Console API请求头
-func buildConsoleAPIHeaders(secretKey string) map[string]string {
+func buildConsoleAPIHeaders(secretKey string, anthropicBeta string) map[string]string {
 	customRequestHeaders := map[string]string{
 		"x-api-key":     secretKey,
 		"Authorization": "Bearer " + secretKey,
 	}
 
-	return common.MergeHeaders(customRequestHeaders)
+	return common.MergeHeaders(customRequestHeaders, anthropicBeta)
 }
 
 // setConsoleStreamHeaders 设置Console流式请求头
@@ -318,7 +322,7 @@ func TestHandleClaudeConsoleRequest(account *model.Account) (int, string) {
 		return http.StatusInternalServerError, "Failed to create request: " + err.Error()
 	}
 
-	fixedHeaders := buildConsoleAPIHeaders(account.SecretKey)
+	fixedHeaders := buildConsoleAPIHeaders(account.SecretKey, "")
 	fixedHeaders["Content-Type"] = "application/json"
 	fixedHeaders["Accept"] = "text/event-stream"
 
