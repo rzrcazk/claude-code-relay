@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	ClaudeAPIURL        = "https://api.anthropic.com/v1/messages"
+	ClaudeAPIURL        = "https://api.anthropic.com/v1/messages?beta=true"
 	ClaudeOAuthTokenURL = "https://console.anthropic.com/v1/oauth/token"
 	ClaudeOAuthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
@@ -205,7 +205,11 @@ func copyRequestHeaders(c *gin.Context, req *http.Request) {
 
 // setClaudeAPIHeaders 设置Claude API请求头
 func setClaudeAPIHeaders(req *http.Request, accessToken string) {
-	fixedHeaders := buildClaudeAPIHeaders(accessToken)
+	// 获取 anthropic-beta 的请求头参数
+	anthropicBeta := req.Header.Get("anthropic-beta")
+
+	// 构建固定的请求头
+	fixedHeaders := buildClaudeAPIHeaders(accessToken, anthropicBeta)
 	for name, value := range fixedHeaders {
 		req.Header.Set(name, value)
 	}
@@ -412,7 +416,7 @@ func appendErrorMessage(baseError gin.H, message string) gin.H {
 // TestsHandleClaudeRequest 用于测试的Claude请求处理函数，功能同HandleClaudeRequest但不更新日志和账号状态
 // 主要用于单元测试和集成测试，避免对数据库和日志系统的
 func TestsHandleClaudeRequest(account *model.Account) (int, string) {
-	body, _ := sjson.SetBytes([]byte(TestRequestBody), "stream", true)
+	body, _ := sjson.SetBytes([]byte(common.TestRequestBody), "stream", true)
 
 	// 获取有效的访问token
 	accessToken, err := getValidAccessToken(account)
@@ -426,7 +430,7 @@ func TestsHandleClaudeRequest(account *model.Account) (int, string) {
 	}
 
 	// 使用公共的请求头构建方法
-	fixedHeaders := buildClaudeAPIHeaders(accessToken)
+	fixedHeaders := buildClaudeAPIHeaders(accessToken, "")
 
 	for name, value := range fixedHeaders {
 		req.Header.Set(name, value)
@@ -466,24 +470,12 @@ func TestsHandleClaudeRequest(account *model.Account) (int, string) {
 }
 
 // buildClaudeAPIHeaders 构建Claude API请求头
-func buildClaudeAPIHeaders(accessToken string) map[string]string {
-	return map[string]string{
-		"Authorization":                             "Bearer " + accessToken,
-		"anthropic-version":                         "2023-06-01",
-		"X-Stainless-Retry-Count":                   "0",
-		"X-Stainless-Timeout":                       "600",
-		"X-Stainless-Lang":                          "js",
-		"X-Stainless-Package-Version":               "0.55.1",
-		"X-Stainless-OS":                            "MacOS",
-		"X-Stainless-Arch":                          "arm64",
-		"X-Stainless-Runtime":                       "node",
-		"x-stainless-helper-method":                 "stream",
-		"x-app":                                     "cli",
-		"User-Agent":                                "claude-cli/1.0.44 (external, cli)",
-		"anthropic-beta":                            "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
-		"X-Stainless-Runtime-Version":               "v20.18.1",
-		"anthropic-dangerous-direct-browser-access": "true",
+func buildClaudeAPIHeaders(accessToken string, anthropicBeta string) map[string]string {
+	customRequestHeaders := map[string]string{
+		"Authorization": "Bearer " + accessToken,
 	}
+
+	return common.MergeHeaders(customRequestHeaders, anthropicBeta)
 }
 
 // getValidAccessToken 获取有效的访问token，如果过期则自动刷新
