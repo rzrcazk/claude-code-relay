@@ -1063,7 +1063,7 @@ func (st *StreamTransformer) sendFinalEvents(writer gin.ResponseWriter) {
 
 // TestHandleOpenAIRequest 仅用于单元测试，返回状态码和响应内容
 func TestHandleOpenAIRequest(account *model.Account) (int, string) {
-	requestBody := GetTestRequestBody(100)
+	requestBody := common.GetTestRequestBody(100)
 
 	// 解析Claude请求
 	var claudeReq ClaudeRequest

@@ -187,24 +187,12 @@ func setConsoleAPIHeaders(req *http.Request, secretKey string) {
 
 // buildConsoleAPIHeaders 构建Console API请求头
 func buildConsoleAPIHeaders(secretKey string) map[string]string {
-	return map[string]string{
-		"x-api-key":                                 secretKey,
-		"Authorization":                             "Bearer " + secretKey,
-		"anthropic-version":                         "2023-06-01",
-		"X-Stainless-Retry-Count":                   "0",
-		"X-Stainless-Timeout":                       "600",
-		"X-Stainless-Lang":                          "js",
-		"X-Stainless-Package-Version":               "0.55.1",
-		"X-Stainless-OS":                            "MacOS",
-		"X-Stainless-Arch":                          "arm64",
-		"X-Stainless-Runtime":                       "node",
-		"x-stainless-helper-method":                 "stream",
-		"x-app":                                     "cli",
-		"User-Agent":                                "claude-cli/1.0.44 (external, cli)",
-		"anthropic-beta":                            "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
-		"X-Stainless-Runtime-Version":               "v20.18.1",
-		"anthropic-dangerous-direct-browser-access": "true",
+	customRequestHeaders := map[string]string{
+		"x-api-key":     secretKey,
+		"Authorization": "Bearer " + secretKey,
 	}
+
+	return common.MergeHeaders(customRequestHeaders)
 }
 
 // setConsoleStreamHeaders 设置Console流式请求头
@@ -323,7 +311,7 @@ func handleConsoleErrorResponse(c *gin.Context, resp *http.Response, responseRea
 
 // TestHandleClaudeConsoleRequest 测试处理Claude Console请求的函数
 func TestHandleClaudeConsoleRequest(account *model.Account) (int, string) {
-	body, _ := sjson.SetBytes([]byte(TestRequestBody), "stream", true)
+	body, _ := sjson.SetBytes([]byte(common.TestRequestBody), "stream", true)
 
 	req, err := http.NewRequest("POST", account.RequestURL+"/v1/messages?beta=true", bytes.NewBuffer(body))
 	if err != nil {
