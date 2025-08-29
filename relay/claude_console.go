@@ -47,7 +47,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestB
 
 	apiKey := extractConsoleAPIKey(c)
 
-	body, err := parseConsoleRequest(requestBody)
+	body, err := parseConsoleRequest(c, requestBody)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, appendConsoleErrorMessage(consoleErrRequestBodyRead, err.Error()))
 		return
@@ -108,9 +108,16 @@ func extractConsoleAPIKey(c *gin.Context) *model.ApiKey {
 }
 
 // parseConsoleRequest 解析Console请求
-func parseConsoleRequest(requestBody []byte) ([]byte, error) {
-	body, _ := sjson.SetBytes(requestBody, "stream", true)                     // 设置流式请求
-	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置用户ID为实例ID
+func parseConsoleRequest(c *gin.Context, requestBody []byte) ([]byte, error) {
+	body, _ := sjson.SetBytes(requestBody, "stream", true) // 强制流式输出
+
+	// 上下文中提取分组ID
+	if groupID, exists := c.Get("group_id"); exists {
+		body, _ = sjson.SetBytes(body, "metadata.user_id", model.GetInstanceID(uint(groupID.(int))))
+	} else {
+		body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置固定的用户ID
+	}
+
 	return body, nil
 }
 

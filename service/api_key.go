@@ -159,6 +159,8 @@ func UpdateApiKeyStatusCom(id, userID uint, status int) error {
 		return err
 	}
 
+	// 更新成功后清理相关缓存
+	model.ClearApiKeyCache(apiKey.Key)
 	return nil
 }
 

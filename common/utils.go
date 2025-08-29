@@ -66,7 +66,17 @@ func CloseIO(c io.Closer) {
 	}
 }
 
+// GenerateRandomInstanceID 生成随机示例ID
+func GenerateRandomInstanceID() string {
+	bytes := make([]byte, 31) // 31字节 * 2 = 62个十六进制字符，取前61位
+	if _, err := rand.Read(bytes); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(bytes)[:61] // 取前61位
+}
+
 // GetInstanceID 获取实例ID，如果不存在则生成61位随机字符串并存储到Redis
+// 仅在分组示例ID不存在时调用, 即全局共享组专属ID
 func GetInstanceID() string {
 	const instanceKey = "system:instance_id"
 	ctx := context.Background()
@@ -79,13 +89,11 @@ func GetInstanceID() string {
 		}
 	}
 
-	// 生成61位随机字符串
-	bytes := make([]byte, 31) // 31字节 * 2 = 62个十六进制字符，取前61位
-	if _, err := rand.Read(bytes); err != nil {
-		SysError("Failed to generate random bytes for instance ID: " + err.Error())
+	newID := GenerateRandomInstanceID()
+	if newID == "" {
+		SysError("Failed to generate instance ID")
 		return ""
 	}
-	newID := hex.EncodeToString(bytes)[:61] // 取前61位
 
 	// 存储到Redis（永久存储）
 	if RDB != nil {

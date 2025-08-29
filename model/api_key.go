@@ -1,7 +1,10 @@
 package model
 
 import (
+	"claude-code-relay/common"
+	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -30,7 +33,7 @@ type ApiKey struct {
 	DeletedAt                     gorm.DeletedAt `json:"-" gorm:"index"`
 	// 关联查询
 	Group *Group `json:"group" gorm:"-"`
-	
+
 	// 最近一周统计数据（不存储到数据库，运行时计算）
 	WeeklyCost  float64 `json:"weekly_cost" gorm:"-"`  // 最近一周使用费用
 	WeeklyCount int64   `json:"weekly_count" gorm:"-"` // 最近一周使用次数
@@ -109,8 +112,27 @@ func GetApiKeyById(id uint, userID uint) (*ApiKey, error) {
 	return &apiKey, nil
 }
 
-// GetApiKeyByKey 根据API Key获取
+// GetApiKeyByKey 根据API Key获取（带缓存）
 func GetApiKeyByKey(key string) (*ApiKey, error) {
+	// 先尝试从缓存获取
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("api_key:%s", key)
+		cachedData, err := common.RDB.Get(context.Background(), cacheKey).Result()
+		if err == nil {
+			var apiKey ApiKey
+			if json.Unmarshal([]byte(cachedData), &apiKey) == nil {
+				// 检查缓存的数据是否过期
+				if apiKey.ExpiresAt != nil && time.Time(*apiKey.ExpiresAt).Before(time.Now()) {
+					// 缓存的数据已过期，删除缓存
+					common.RDB.Del(context.Background(), cacheKey)
+					return nil, gorm.ErrRecordNotFound
+				}
+				return &apiKey, nil
+			}
+		}
+	}
+
+	// 缓存未命中，从数据库查询
 	var apiKey ApiKey
 	err := DB.Where("`key` = ? AND status = 1", key).First(&apiKey).Error
 	if err != nil {
@@ -122,14 +144,42 @@ func GetApiKeyByKey(key string) (*ApiKey, error) {
 		return nil, gorm.ErrRecordNotFound
 	}
 
+	// 存储到缓存（5分钟）
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("api_key:%s", key)
+		cachedData, err := json.Marshal(apiKey)
+		if err == nil {
+			common.RDB.Set(context.Background(), cacheKey, cachedData, 5*time.Minute)
+		}
+	}
+
 	return &apiKey, nil
 }
 
+// ClearApiKeyCache 清理API Key缓存
+func ClearApiKeyCache(key string) {
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("api_key:%s", key)
+		common.RDB.Del(context.Background(), cacheKey)
+	}
+}
+
 func UpdateApiKey(apiKey *ApiKey) error {
-	return DB.Save(apiKey).Error
+	err := DB.Save(apiKey).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func DeleteApiKey(id uint) error {
+	// 先获取API Key信息用于清理缓存
+	var apiKey ApiKey
+	if err := DB.First(&apiKey, id).Error; err == nil {
+		defer ClearApiKeyCache(apiKey.Key)
+	}
+
 	return DB.Delete(&ApiKey{}, id).Error
 }
 
@@ -208,9 +258,9 @@ func setWeeklyStatsForApiKeys(apiKeys []ApiKey) error {
 	if weekday == 0 { // 如果是周日，调整为7
 		weekday = 7
 	}
-	
+
 	// 计算本周一的日期
-	weekStart := now.AddDate(0, 0, -(weekday-1))
+	weekStart := now.AddDate(0, 0, -(weekday - 1))
 	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
 
 	// 提取所有API Key ID
