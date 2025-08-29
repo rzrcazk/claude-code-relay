@@ -68,6 +68,19 @@ func ClaudeCodeAuth() gin.HandlerFunc {
 			return
 		}
 
+		// 检查分组是否被禁用
+		if keyInfo.GroupID > 0 {
+			status := model.GetGroupStatus(keyInfo.GroupID)
+			if status != 1 {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "API Key所属分组不可用",
+					"code":  40005,
+				})
+				c.Abort()
+				return
+			}
+		}
+
 		// API Key已经在model层验证了状态和过期时间
 		// 将API Key信息存储到上下文中供后续使用
 		c.Set("api_key_id", keyInfo.ID)

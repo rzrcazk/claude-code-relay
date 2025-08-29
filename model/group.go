@@ -58,6 +58,16 @@ func GetGroupById(id int, userID uint) (*Group, error) {
 	return &group, nil
 }
 
+// GetGroupStatus 获取分组状态，找不到返回0
+func GetGroupStatus(id int) int {
+	var group Group
+	err := DB.Select("id,status").Where("id = ?", id).First(&group).Error
+	if err != nil {
+		return 0
+	}
+	return group.Status
+}
+
 func GetGroupByName(name string, userID uint) (*Group, error) {
 	var group Group
 	err := DB.Where("name = ? AND user_id = ?", name, userID).First(&group).Error
