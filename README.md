@@ -169,7 +169,7 @@ docker-compose up -d
 
 ### 二进制部署
 
-可以在 [Releases](https://github.com/RipperTs/claude-code-relay/releases) 页面直接下载最新的二进制文件, 或者按照下面方式自行编译构建。
+可以在 [Releases](https://github.com/RipperTs/claude-code-relay/releases) 页面直接下载最新的二进制文件, 或者按照下面方式自行编译构建。   
 
 **构建多平台版本**
 ```bash
@@ -199,26 +199,8 @@ export MYSQL_USER=your-user
 export MYSQL_PASSWORD=your-password
 ...
 
-# 启动服务
+# 启动服务 (v0.1.10及以上版本前端文件已打包进二进制, 直接打开服务域名即可访问首页)
 ./claude-code-relay
-```
-
-**生产环境前端启动**
-```bash
-# 进入前端目录
-cd web
-
-# 安装依赖 (推荐使用pnpm)
-pnpm install
-
-# 新增.env 文件, 参考 .env.development 配置
-cp .env.development .env
-vi .env # 修改 VITE_API_URL 为你的后端地址
-
-# 构建生产版本
-pnpm run build
-
-# 部署到服务器即可
 ```
 
 ## 💐 如何在ClaudeCode中使用此服务?
