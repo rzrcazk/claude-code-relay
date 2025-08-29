@@ -6,7 +6,9 @@ import (
 	"claude-code-relay/model"
 	"claude-code-relay/router"
 	"claude-code-relay/scheduled"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +19,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+// 嵌入前端静态文件
+//go:embed web/dist
+var staticFS embed.FS
 
 func main() {
 	// 加载环境变量
@@ -79,8 +85,14 @@ func main() {
 	// 设置跨域中间件
 	server.Use(middleware.CORS())
 
+	// 准备静态文件系统
+	var staticFileSystem http.FileSystem
+	if sub, err := fs.Sub(staticFS, "web/dist"); err == nil {
+		staticFileSystem = http.FS(sub)
+	}
+
 	// 设置API前后端路由
-	router.SetAPIRouter(server)
+	router.SetAPIRouter(server, staticFS, staticFileSystem)
 
 	// 启动服务器
 	port := os.Getenv("PORT")

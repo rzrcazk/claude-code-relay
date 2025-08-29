@@ -3,6 +3,7 @@ package router
 import (
 	"claude-code-relay/controller"
 	"claude-code-relay/middleware"
+	"embed"
 	"net/http"
 	"strings"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetAPIRouter(server *gin.Engine) {
+func SetAPIRouter(server *gin.Engine, embeddedFS embed.FS, staticFileSystem http.FileSystem) {
 	// 健康检查
 	server.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -142,26 +143,41 @@ func SetAPIRouter(server *gin.Engine) {
 		}
 	}
 
-	// 前端静态文件服务
-	server.Static("/assets", "./web/dist/assets")
-	server.Static("/static", "./web/dist/static")
-
-	// 前端路由处理 - 对于前端路由，返回 index.html
+	// 前端路由处理 - SPA应用的路由处理
 	server.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
 		// 如果是 API 请求，返回404
-		if strings.HasPrefix(c.Request.URL.Path, "/api/") || strings.HasPrefix(c.Request.URL.Path, "/health") {
+		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/health") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "API not found"})
 			return
 		}
 
 		// 如果是 claude-code 路径但不是已定义的路由，返回空白200响应
-		if strings.HasPrefix(c.Request.URL.Path, "/claude-code/") {
-			// 未定义的claude-code路由返回空白200
+		if strings.HasPrefix(path, "/claude-code/") {
 			c.Status(200)
 			return
 		}
 
-		// 对于前端路由，返回 index.html
-		c.File("./web/dist/index.html")
+		// 尝试从嵌入文件系统中获取静态文件
+		if staticFileSystem != nil {
+			file, err := staticFileSystem.Open(strings.TrimPrefix(path, "/"))
+			if err == nil {
+				if closeErr := file.Close(); closeErr != nil {
+					// 记录关闭文件错误，但不影响继续处理
+				}
+				// 成功找到文件，使用文件服务器处理
+				http.FileServer(staticFileSystem).ServeHTTP(c.Writer, c.Request)
+				return
+			}
+		}
+
+		// 如果找不到静态文件，返回 index.html (SPA路由)
+		indexContent, err := embeddedFS.ReadFile("web/dist/index.html")
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to load index.html: "+err.Error())
+			return
+		}
+		c.Data(http.StatusOK, "text/html; charset=utf-8", indexContent)
 	})
 }
