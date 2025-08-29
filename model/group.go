@@ -2,6 +2,11 @@ package model
 
 import (
 	"claude-code-relay/common"
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -58,13 +63,37 @@ func GetGroupById(id int, userID uint) (*Group, error) {
 	return &group, nil
 }
 
-// GetGroupStatus 获取分组状态，找不到返回0
+// GetGroupStatus 获取分组状态（带缓存），找不到返回0
 func GetGroupStatus(id int) int {
+	// 先尝试从缓存获取
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("group_status:%d", id)
+		cachedStatus, err := common.RDB.Get(context.Background(), cacheKey).Result()
+		if err == nil {
+			if status, parseErr := strconv.Atoi(cachedStatus); parseErr == nil {
+				return status
+			}
+		}
+	}
+
+	// 缓存未命中，从数据库查询
 	var group Group
 	err := DB.Select("id,status").Where("id = ?", id).First(&group).Error
 	if err != nil {
+		// 查询失败时，缓存结果0也可以避免频繁查询
+		if common.RDB != nil {
+			cacheKey := fmt.Sprintf("group_status:%d", id)
+			common.RDB.Set(context.Background(), cacheKey, "0", 5*time.Minute)
+		}
 		return 0
 	}
+
+	// 存储到缓存（5分钟）
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("group_status:%d", id)
+		common.RDB.Set(context.Background(), cacheKey, strconv.Itoa(group.Status), 5*time.Minute)
+	}
+
 	return group.Status
 }
 
