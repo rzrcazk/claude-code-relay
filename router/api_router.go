@@ -26,6 +26,8 @@ func SetAPIRouter(server *gin.Engine, embeddedFS embed.FS, staticFileSystem http
 	{
 		// 对话接口
 		claude.POST("/v1/messages", controller.GetMessages)
+		// 使用量统计接口
+		claude.POST("/v1/messages/count_tokens", controller.GetCountTokens)
 	}
 
 	// API路由组
