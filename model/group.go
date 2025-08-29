@@ -1,18 +1,20 @@
 package model
 
 import (
+	"claude-code-relay/common"
 	"gorm.io/gorm"
 )
 
 type Group struct {
-	ID        uint           `json:"id" gorm:"primaryKey"`
-	Name      string         `json:"name" gorm:"type:varchar(100);not null;uniqueIndex:idx_groups_user_name"`
-	Remark    string         `json:"remark" gorm:"type:text"`
-	Status    int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
-	UserID    uint           `json:"user_id" gorm:"not null;uniqueIndex:idx_groups_user_name"`
-	CreatedAt Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
-	UpdatedAt Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"uniqueIndex:idx_groups_user_name"`
+	ID         uint           `json:"id" gorm:"primaryKey"`
+	Name       string         `json:"name" gorm:"type:varchar(100);not null;uniqueIndex:idx_groups_user_name"`
+	Remark     string         `json:"remark" gorm:"type:text"`
+	Status     int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
+	UserID     uint           `json:"user_id" gorm:"not null;uniqueIndex:idx_groups_user_name"`
+	InstanceID string         `json:"instance_id" gorm:"type:varchar(61)"`
+	CreatedAt  Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
+	UpdatedAt  Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
+	DeletedAt  gorm.DeletedAt `json:"-" gorm:"uniqueIndex:idx_groups_user_name"`
 
 	// 统计字段，不存储在数据库中
 	ApiKeyCount  int `json:"api_key_count" gorm:"-"`
@@ -120,4 +122,21 @@ func GetGroups(page, limit int, userID uint) ([]Group, int64, error) {
 	}
 
 	return groups, total, nil
+}
+
+// GetInstanceID 根据分组ID获取实例ID，如果不存在则生成并存储
+func GetInstanceID(groupID uint) string {
+	var group Group
+	err := DB.Where("id = ?", groupID).First(&group).Error
+	if err != nil {
+		return common.GetInstanceID()
+	}
+
+	if group.InstanceID == "" {
+		group.InstanceID = common.GenerateRandomInstanceID()
+
+		// 保存到数据库
+		DB.Model(&group).Update("instance_id", group.InstanceID)
+	}
+	return group.InstanceID
 }

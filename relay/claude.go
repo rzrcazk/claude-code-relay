@@ -71,7 +71,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account, requestBody []b
 
 	apiKey := extractAPIKey(c)
 
-	requestData := prepareRequestBody(requestBody)
+	requestData := prepareRequestBody(c, requestBody)
 
 	accessToken, err := getValidAccessToken(account)
 	if err != nil {
@@ -135,9 +135,15 @@ func extractAPIKey(c *gin.Context) *model.ApiKey {
 }
 
 // prepareRequestBody 准备请求体，添加必要的字段
-func prepareRequestBody(requestBody []byte) *requestData {
-	body, _ := sjson.SetBytes(requestBody, "stream", true)                     // 强制流式输出
-	body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置固定的用户ID
+func prepareRequestBody(c *gin.Context, requestBody []byte) *requestData {
+	body, _ := sjson.SetBytes(requestBody, "stream", true) // 强制流式输出
+
+	// 上下文中提取分组ID
+	if groupID, exists := c.Get("group_id"); exists {
+		body, _ = sjson.SetBytes(body, "metadata.user_id", model.GetInstanceID(uint(groupID.(int))))
+	} else {
+		body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置固定的用户ID
+	}
 
 	return &requestData{Body: body}
 }
