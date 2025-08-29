@@ -195,26 +195,8 @@ export MYSQL_USER=your-user
 export MYSQL_PASSWORD=your-password
 ...
 
-# Start service
+# Start service (The frontend files for version v0.1.10 and higher have been packaged into the binary; simply open the service domain to access the homepage.)
 ./claude-code-relay
-```
-
-**Production Frontend Startup**
-```bash
-# Enter frontend directory
-cd web
-
-# Install dependencies (pnpm recommended)
-pnpm install
-
-# Create .env file, refer to .env.development configuration
-cp .env.development .env
-vi .env # Modify VITE_API_URL to your backend address
-
-# Build production version
-pnpm run build
-
-# Deploy to server
 ```
 
 ## 💐 How to Use This Service in Claude Code?
