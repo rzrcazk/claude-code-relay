@@ -28,6 +28,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
+# 从前端构建阶段复制dist目录到当前构建上下文
+COPY --from=frontend-builder /app/web/dist ./web/dist
+
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o claude-code-relay main.go
 
 # 最终运行阶段
@@ -44,8 +47,7 @@ RUN mkdir -p /app/logs
 # 复制后端可执行文件
 COPY --from=backend-builder /app/claude-code-relay .
 
-# 复制前端构建产物
-COPY --from=frontend-builder /app/web/dist ./web/dist
+# 前端构建产物已经嵌入到二进制文件中，无需单独复制
 
 COPY .env.example .env.example
 
