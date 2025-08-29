@@ -28,15 +28,6 @@ services:
       --max-connections=1000
     networks:
       - claude-network
-    # 资源限制
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
     # 安全配置
     security_opt:
       - no-new-privileges:true
@@ -65,15 +56,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    # 资源限制
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
     # 安全配置
     security_opt:
       - no-new-privileges:true
@@ -118,15 +100,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    # 资源限制
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     # 安全配置
     security_opt:
       - no-new-privileges:true

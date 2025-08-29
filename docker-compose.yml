@@ -5,7 +5,7 @@ version: '3.8'
 
 services:
   app:
-    image: registry.cn-hangzhou.aliyuncs.com/ripper/claude-code-relay:latest
+    image: registry.cn-hangzhou.aliyuncs.com/ripper/claude-code-relay:amd64
     container_name: claude-code-relay-app
     restart: unless-stopped
     ports:
@@ -27,27 +27,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    # 资源限制（可选，根据实际需求调整）
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     # 安全配置
     security_opt:
       - no-new-privileges:true
-    # 非root用户运行（如果镜像支持）
-    # user: "1000:1000"
 
 volumes:
   app_logs:
     driver: local
-  # 如果使用SQLite，取消下面这行的注释
-  # app_data:
-  #   driver: local
 
 networks:
   claude-network:

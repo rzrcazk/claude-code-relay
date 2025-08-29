@@ -8,19 +8,17 @@ Makefile
 docs
 nginx
 out
-/web/node_modules
+web/node_modules/
 .idea
 upload
 *.exe
 *.db
 build
 *.db-journal
-web/dist
+# web/dist - 构建时需要从前端阶段复制
 .DS_Store
 .claude
 .cursor
 docker-compose.yml
-docs
-out
 redis_data
 app_logs
