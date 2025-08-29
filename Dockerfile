@@ -24,11 +24,12 @@ FROM golang:1.21-alpine AS backend-builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
-
 RUN go mod download
+
+# 复制项目文件（web/node_modules已被.dockerignore排除）
 COPY . .
 
-# 从前端构建阶段复制dist目录到当前构建上下文
+# 从前端构建阶段复制构建好的dist目录，覆盖可能存在的空dist
 COPY --from=frontend-builder /app/web/dist ./web/dist
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o claude-code-relay main.go
@@ -46,8 +47,6 @@ RUN mkdir -p /app/logs
 
 # 复制后端可执行文件
 COPY --from=backend-builder /app/claude-code-relay .
-
-# 前端构建产物已经嵌入到二进制文件中，无需单独复制
 
 COPY .env.example .env.example
 
