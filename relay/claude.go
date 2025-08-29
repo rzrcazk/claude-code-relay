@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	ClaudeAPIURL        = "https://api.anthropic.com/v1/messages?beta=true"
-	ClaudeOAuthTokenURL = "https://console.anthropic.com/v1/oauth/token"
-	ClaudeOAuthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+	ClaudeAPIURL         = "https://api.anthropic.com/v1/messages?beta=true"
+	ClaudeCountTokensURL = "https://api.anthropic.com/v1/messages/count_tokens?beta=true"
+	ClaudeOAuthTokenURL  = "https://console.anthropic.com/v1/oauth/token"
+	ClaudeOAuthClientID  = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
 	// 默认超时配置
 	defaultHTTPTimeout = 120 * time.Second
@@ -623,4 +624,79 @@ func maskToken(token string) string {
 		return strings.Repeat("*", len(token))
 	}
 	return token[:4] + strings.Repeat("*", len(token)-8) + token[len(token)-4:]
+}
+
+// GetCountTokens 统计请求中的token数量，供速率限制和计费使用
+func GetCountTokens(c *gin.Context, account *model.Account, requestBody []byte) {
+	accessToken, err := getValidAccessToken(account)
+	if err != nil {
+		log.Printf("获取有效访问token失败: %v", err)
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errAuthFailed, err.Error()))
+		return
+	}
+
+	client := createHTTPClient(account)
+	if client == nil {
+		c.JSON(http.StatusInternalServerError, errProxyConfig)
+		return
+	}
+
+	req, err := http.NewRequestWithContext(
+		c.Request.Context(),
+		"POST",
+		ClaudeCountTokensURL,
+		bytes.NewBuffer(requestBody),
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errCreateRequest, err.Error()))
+		return
+	}
+
+	// 复制原始请求头
+	copyRequestHeaders(c, req)
+
+	// 设置Claude API请求头，包含Authorization认证
+	anthropicBeta := req.Header.Get("anthropic-beta")
+	fixedHeaders := buildClaudeAPIHeaders(accessToken, anthropicBeta)
+	for name, value := range fixedHeaders {
+		req.Header.Set(name, value)
+	}
+
+	// 删除不需要的请求头
+	req.Header.Del("X-Api-Key")
+	req.Header.Del("Cookie")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		handleRequestError(c, err)
+		return
+	}
+	defer common.CloseIO(resp.Body)
+
+	responseReader, err := createResponseReader(resp)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errDecompression, err.Error()))
+		return
+	}
+
+	// 读取响应内容
+	responseBody, err := io.ReadAll(responseReader)
+	if err != nil {
+		log.Printf("读取count_tokens响应失败: %v", err)
+		c.JSON(http.StatusInternalServerError, appendErrorMessage(errResponseRead, err.Error()))
+		return
+	}
+
+	// 设置响应状态码和头部
+	c.Status(resp.StatusCode)
+	copyResponseHeaders(c, resp)
+
+	// 如果是错误响应，处理错误逻辑
+	if resp.StatusCode >= statusBadRequest {
+		log.Printf("❌ count_tokens状态码: %d, 响应内容: %s", resp.StatusCode, string(responseBody))
+		handleRateLimit(resp, responseBody, account)
+	}
+
+	// 返回原始响应
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), responseBody)
 }

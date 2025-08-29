@@ -35,6 +35,14 @@ type TestAccountResponse struct {
 	PlatformType string `json:"platform_type"`
 }
 
+// RequestContext 请求上下文信息
+type RequestContext struct {
+	APIKey           *model.ApiKey
+	Body             []byte
+	ModelName        string
+	FilteredAccounts []model.Account
+}
+
 // GetOAuthURL 获取OAuth授权URL
 func GetOAuthURL(c *gin.Context) {
 	oauthHelper := common.NewOAuthHelper(nil)
@@ -88,8 +96,8 @@ func ExchangeCode(c *gin.Context) {
 	})
 }
 
-// GetMessages 获取对话消息
-func GetMessages(c *gin.Context) {
+// prepareRequestContext 预处理请求上下文
+func prepareRequestContext(c *gin.Context) (*RequestContext, bool) {
 	// 从上下文中获取API Key的详细信息
 	apiKey, _ := c.Get("api_key")
 	keyInfo := apiKey.(*model.ApiKey)
@@ -100,7 +108,7 @@ func GetMessages(c *gin.Context) {
 			"message": "请求参数异常",
 			"code":    constant.InternalServerError,
 		})
-		return
+		return nil, false
 	}
 
 	modelName := gjson.GetBytes(body, "model").String()
@@ -109,6 +117,7 @@ func GetMessages(c *gin.Context) {
 			"message": "missing model",
 			"code":    constant.InternalServerError,
 		})
+		return nil, false
 	}
 
 	// 根据API Key的分组ID查询可用账号列表
@@ -118,7 +127,7 @@ func GetMessages(c *gin.Context) {
 			"message": "查询账号列表失败",
 			"code":    constant.InternalServerError,
 		})
-		return
+		return nil, false
 	}
 
 	// 根据模型权限过滤账号
@@ -136,20 +145,35 @@ func GetMessages(c *gin.Context) {
 				"code":    constant.Forbidden,
 			})
 		}
+		return nil, false
+	}
+
+	return &RequestContext{
+		APIKey:           keyInfo,
+		Body:             body,
+		ModelName:        modelName,
+		FilteredAccounts: filteredAccounts,
+	}, true
+}
+
+// GetMessages 获取对话消息
+func GetMessages(c *gin.Context) {
+	ctx, ok := prepareRequestContext(c)
+	if !ok {
 		return
 	}
 
 	// 选择第一个账号（已按优先级和使用次数排序）
-	selectedAccount := filteredAccounts[0]
+	selectedAccount := ctx.FilteredAccounts[0]
 
 	// 根据平台类型路由到不同的处理器
 	switch selectedAccount.PlatformType {
 	case constant.PlatformClaude:
-		relay.HandleClaudeRequest(c, &selectedAccount, body)
+		relay.HandleClaudeRequest(c, &selectedAccount, ctx.Body)
 	case constant.PlatformClaudeConsole:
-		relay.HandleClaudeConsoleRequest(c, &selectedAccount, body)
+		relay.HandleClaudeConsoleRequest(c, &selectedAccount, ctx.Body)
 	case constant.PlatformOpenAI:
-		relay.HandleOpenAIRequest(c, &selectedAccount, body)
+		relay.HandleOpenAIRequest(c, &selectedAccount, ctx.Body)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "不支持的平台类型: " + selectedAccount.PlatformType,
@@ -310,4 +334,33 @@ func filterAccountsByModelPermission(accounts []model.Account, apiKey *model.Api
 	}
 
 	return filteredAccounts
+}
+
+// GetCountTokens 获取token计数数据
+func GetCountTokens(c *gin.Context) {
+	ctx, ok := prepareRequestContext(c)
+	if !ok {
+		return
+	}
+
+	// 查找 PlatformType 为 constant.PlatformClaude 的账号
+	var selectedAccount *model.Account
+	for _, account := range ctx.FilteredAccounts {
+		if account.PlatformType == constant.PlatformClaude {
+			selectedAccount = &account
+			break
+		}
+	}
+
+	// 检查是否找到符合条件的账号
+	if selectedAccount == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "没有可用的Claude平台账号",
+			"code":    constant.NotFound,
+		})
+		return
+	}
+
+	// 调用Claude平台的GetCountTokens处理器
+	relay.GetCountTokens(c, selectedAccount, ctx.Body)
 }
