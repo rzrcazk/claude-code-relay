@@ -156,11 +156,30 @@ func GetApiKeyByKey(key string) (*ApiKey, error) {
 	return &apiKey, nil
 }
 
+// ClearApiKeyCache 清理API Key缓存
+func ClearApiKeyCache(key string) {
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("api_key:%s", key)
+		common.RDB.Del(context.Background(), cacheKey)
+	}
+}
+
 func UpdateApiKey(apiKey *ApiKey) error {
-	return DB.Save(apiKey).Error
+	err := DB.Save(apiKey).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func DeleteApiKey(id uint) error {
+	// 先获取API Key信息用于清理缓存
+	var apiKey ApiKey
+	if err := DB.First(&apiKey, id).Error; err == nil {
+		defer ClearApiKeyCache(apiKey.Key)
+	}
+
 	return DB.Delete(&ApiKey{}, id).Error
 }
 

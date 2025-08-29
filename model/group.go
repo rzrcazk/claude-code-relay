@@ -97,6 +97,14 @@ func GetGroupStatus(id int) int {
 	return group.Status
 }
 
+// clearGroupStatusCache 清理分组状态缓存
+func clearGroupStatusCache(groupID int) {
+	if common.RDB != nil {
+		cacheKey := fmt.Sprintf("group_status:%d", groupID)
+		common.RDB.Del(context.Background(), cacheKey)
+	}
+}
+
 func GetGroupByName(name string, userID uint) (*Group, error) {
 	var group Group
 	err := DB.Where("name = ? AND user_id = ?", name, userID).First(&group).Error
@@ -107,11 +115,25 @@ func GetGroupByName(name string, userID uint) (*Group, error) {
 }
 
 func UpdateGroup(group *Group) error {
-	return DB.Save(group).Error
+	err := DB.Save(group).Error
+	if err != nil {
+		return err
+	}
+
+	// 更新成功后清理相关缓存
+	clearGroupStatusCache(int(group.ID))
+	return nil
 }
 
 func DeleteGroup(id uint) error {
-	return DB.Delete(&Group{}, id).Error
+	err := DB.Delete(&Group{}, id).Error
+	if err != nil {
+		return err
+	}
+
+	// 删除成功后清理相关缓存
+	clearGroupStatusCache(int(id))
+	return nil
 }
 
 // GetAllGroups 获取所有分组（不分页）
