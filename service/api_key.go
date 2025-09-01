@@ -184,27 +184,34 @@ func ValidateApiKey(key string) (*model.ApiKey, error) {
 // UpdateApiKeyStatus 根据响应状态码更新API Key统计信息
 func UpdateApiKeyStatus(apiKey *model.ApiKey, statusCode int, usage *common.TokenUsage) {
 	// 只在请求成功时更新API Key统计信息
-	if statusCode != 200 && statusCode != 201 {
+	if statusCode < 200 || statusCode >= 300 {
+		return
+	}
+
+	// 重新从数据库获取最新的API Key数据（避免缓存问题）
+	freshApiKey, err := model.GetApiKeyByKeyForUpdate(apiKey.Key)
+	if err != nil {
+		log.Printf("failed to get fresh api key for update: %v", err)
 		return
 	}
 
 	now := time.Now()
 
 	// 判断最后使用时间是否为当天
-	if apiKey.LastUsedTime != nil {
-		lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
+	if freshApiKey.LastUsedTime != nil {
+		lastUsedDate := time.Time(*freshApiKey.LastUsedTime).Format("2006-01-02")
 		todayDate := now.Format("2006-01-02")
 
 		if lastUsedDate == todayDate {
 			// 同一天，使用次数+1
-			apiKey.TodayUsageCount++
+			freshApiKey.TodayUsageCount++
 		} else {
 			// 不同天，重置为1
-			apiKey.TodayUsageCount = 1
+			freshApiKey.TodayUsageCount = 1
 		}
 	} else {
 		// 首次使用，设置为1
-		apiKey.TodayUsageCount = 1
+		freshApiKey.TodayUsageCount = 1
 	}
 
 	// 更新token使用量和费用（如果有的话）
@@ -213,41 +220,41 @@ func UpdateApiKeyStatus(apiKey *model.ApiKey, statusCode int, usage *common.Toke
 		costResult := common.CalculateCost(usage)
 		currentCost := costResult.Costs.Total
 
-		if apiKey.LastUsedTime != nil {
-			lastUsedDate := time.Time(*apiKey.LastUsedTime).Format("2006-01-02")
+		if freshApiKey.LastUsedTime != nil {
+			lastUsedDate := time.Time(*freshApiKey.LastUsedTime).Format("2006-01-02")
 			todayDate := now.Format("2006-01-02")
 
 			if lastUsedDate == todayDate {
 				// 同一天，累加各类tokens和费用
-				apiKey.TodayInputTokens += usage.InputTokens
-				apiKey.TodayOutputTokens += usage.OutputTokens
-				apiKey.TodayCacheReadInputTokens += usage.CacheReadInputTokens
-				apiKey.TodayCacheCreationInputTokens += usage.CacheCreationInputTokens
-				apiKey.TodayTotalCost += currentCost
+				freshApiKey.TodayInputTokens += usage.InputTokens
+				freshApiKey.TodayOutputTokens += usage.OutputTokens
+				freshApiKey.TodayCacheReadInputTokens += usage.CacheReadInputTokens
+				freshApiKey.TodayCacheCreationInputTokens += usage.CacheCreationInputTokens
+				freshApiKey.TodayTotalCost += currentCost
 			} else {
 				// 不同天，重置各类tokens和费用
-				apiKey.TodayInputTokens = usage.InputTokens
-				apiKey.TodayOutputTokens = usage.OutputTokens
-				apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
-				apiKey.TodayCacheCreationInputTokens = usage.CacheCreationInputTokens
-				apiKey.TodayTotalCost = currentCost
+				freshApiKey.TodayInputTokens = usage.InputTokens
+				freshApiKey.TodayOutputTokens = usage.OutputTokens
+				freshApiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
+				freshApiKey.TodayCacheCreationInputTokens = usage.CacheCreationInputTokens
+				freshApiKey.TodayTotalCost = currentCost
 			}
 		} else {
 			// 首次使用，设置各类tokens和费用
-			apiKey.TodayInputTokens = usage.InputTokens
-			apiKey.TodayOutputTokens = usage.OutputTokens
-			apiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
-			apiKey.TodayCacheCreationInputTokens = usage.CacheCreationInputTokens
-			apiKey.TodayTotalCost = currentCost
+			freshApiKey.TodayInputTokens = usage.InputTokens
+			freshApiKey.TodayOutputTokens = usage.OutputTokens
+			freshApiKey.TodayCacheReadInputTokens = usage.CacheReadInputTokens
+			freshApiKey.TodayCacheCreationInputTokens = usage.CacheCreationInputTokens
+			freshApiKey.TodayTotalCost = currentCost
 		}
 	}
 
 	// 更新最后使用时间
 	nowTime := model.Time(now)
-	apiKey.LastUsedTime = &nowTime
+	freshApiKey.LastUsedTime = &nowTime
 
 	// 更新数据库
-	if err := model.UpdateApiKey(apiKey); err != nil {
+	if err := model.UpdateApiKey(freshApiKey); err != nil {
 		log.Printf("failed to update api key status: %v", err)
 	}
 }

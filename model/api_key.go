@@ -156,6 +156,22 @@ func GetApiKeyByKey(key string) (*ApiKey, error) {
 	return &apiKey, nil
 }
 
+// GetApiKeyByKeyForUpdate 根据API Key获取（无缓存，专用于统计更新）
+func GetApiKeyByKeyForUpdate(key string) (*ApiKey, error) {
+	var apiKey ApiKey
+	err := DB.Where("`key` = ? AND status = 1", key).First(&apiKey).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 检查是否过期
+	if apiKey.ExpiresAt != nil && time.Time(*apiKey.ExpiresAt).Before(time.Now()) {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return &apiKey, nil
+}
+
 // ClearApiKeyCache 清理API Key缓存
 func ClearApiKeyCache(key string) {
 	if common.RDB != nil {
