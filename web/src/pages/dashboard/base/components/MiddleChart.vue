@@ -29,10 +29,8 @@ import { CanvasRenderer } from 'echarts/renderers';
 import { computed, nextTick, onDeactivated, onMounted, ref, watch } from 'vue';
 
 import type { DashboardStats } from '@/api/dashboard';
-import { t } from '@/locales';
 import { useSettingStore } from '@/store';
 import { changeChartsTheme } from '@/utils/color';
-import { LAST_7_DAYS } from '@/utils/date';
 
 import { getLineChartDataSet, getPieChartDataSet } from '../index';
 
