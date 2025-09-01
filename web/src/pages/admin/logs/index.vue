@@ -1,6 +1,39 @@
 <template>
   <div>
     <t-card class="list-card-container" :bordered="false">
+      <div class="filter-container">
+        <t-form :data="filterForm" @submit="handleFilter" @reset="handleReset">
+          <div class="filter-form">
+            <div class="left-operation-container">
+              <t-form-item label="用户ID" name="user_id">
+                <t-input
+                  v-model="filterForm.user_id"
+                  placeholder="请输入用户ID"
+                  :min="1"
+                  clearable
+                  style="width: 150px"
+                />
+              </t-form-item>
+              <t-form-item label="状态码" name="status_code">
+                <t-input
+                  v-model="filterForm.status_code"
+                  placeholder="请输入状态码"
+                  :min="100"
+                  :max="599"
+                  clearable
+                  style="width: 150px"
+                />
+              </t-form-item>
+            </div>
+            <div>
+              <t-form-item>
+                <t-button theme="primary" type="submit">搜索</t-button>
+                <t-button type="reset" variant="base" theme="default">重置</t-button>
+              </t-form-item>
+            </div>
+          </div>
+        </t-form>
+      </div>
       <t-table
         :data="data"
         :columns="COLUMNS"
@@ -54,7 +87,7 @@
 import { MessagePlugin } from 'tdesign-vue-next';
 import { onMounted, ref } from 'vue';
 
-import type { SystemLog } from '@/api/systemLogs';
+import type { SystemLog, SystemLogQueryParams } from '@/api/systemLogs';
 import { getSystemLogs } from '@/api/systemLogs';
 import { formatDateTime } from '@/utils/date';
 
@@ -112,13 +145,25 @@ const dataLoading = ref(false);
 const headerAffixedTop = ref(false);
 const rowKey = 'id';
 
+const filterForm = ref({
+  user_id: undefined as number | undefined,
+  status_code: undefined as number | undefined,
+});
+
 const fetchData = async () => {
   dataLoading.value = true;
   try {
-    const params = {
+    const params: SystemLogQueryParams = {
       page: pagination.value.current,
       limit: pagination.value.pageSize,
     };
+
+    if (filterForm.value.user_id) {
+      params.user_id = filterForm.value.user_id;
+    }
+    if (filterForm.value.status_code) {
+      params.status_code = filterForm.value.status_code;
+    }
 
     const result = await getSystemLogs(params);
     data.value = result.logs || [];
@@ -137,7 +182,15 @@ const handlePageChange = (pageInfo: any) => {
   fetchData();
 };
 
-const handleRefresh = () => {
+const handleFilter = () => {
+  pagination.value.current = 1;
+  fetchData();
+};
+
+const handleReset = () => {
+  filterForm.value.user_id = undefined;
+  filterForm.value.status_code = undefined;
+  pagination.value.current = 1;
   fetchData();
 };
 
@@ -173,6 +226,30 @@ onMounted(() => {
 <style lang="less" scoped>
 .list-card-container {
   padding: 20px;
+}
+
+.filter-container {
+  width: 100%;
+  background: var(--td-bg-color-container);
+  border-radius: 6px;
+  border: 1px solid #fff;
+  margin-bottom: 10px;
+
+  .filter-form {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .left-operation-container {
+      display: flex;
+      justify-content: left;
+      align-items: center;
+
+      ::v-deep(.t-form__item) {
+        margin-bottom: 0 !important;
+      }
+    }
+  }
 }
 
 .left-operation-container {

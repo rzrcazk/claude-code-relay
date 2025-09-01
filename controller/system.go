@@ -32,7 +32,23 @@ func GetApiLogs(c *gin.Context) {
 		limit = 10
 	}
 
-	logs, total, err := model.GetApiLogs(page, limit)
+	var userID *uint
+	var statusCode *int
+
+	if userIDStr := c.Query("user_id"); userIDStr != "" {
+		if uid, err := strconv.ParseUint(userIDStr, 10, 32); err == nil {
+			userIDVal := uint(uid)
+			userID = &userIDVal
+		}
+	}
+
+	if statusCodeStr := c.Query("status_code"); statusCodeStr != "" {
+		if code, err := strconv.Atoi(statusCodeStr); err == nil {
+			statusCode = &code
+		}
+	}
+
+	logs, total, err := model.GetApiLogsWithFilter(page, limit, userID, statusCode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "获取日志失败",
