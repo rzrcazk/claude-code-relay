@@ -14,6 +14,13 @@
         </div>
         <div class="right-operation-container">
           <t-space>
+            <t-input
+              v-model="searchFilters.api_key_id"
+              placeholder="请输入秘钥ID"
+              clearable
+              @enter="handleSearch"
+              @clear="handleSearch"
+            ></t-input>
             <t-select
               v-model="searchFilters.model_name"
               placeholder="选择模型"
