@@ -27,6 +27,8 @@ export interface SystemLog {
 export interface SystemLogQueryParams {
   page?: number;
   limit?: number;
+  user_id?: number;
+  status_code?: number;
 }
 
 // 系统日志列表响应

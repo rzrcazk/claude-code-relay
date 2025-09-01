@@ -43,6 +43,33 @@ func GetApiLogs(page, limit int) ([]ApiLog, int64, error) {
 	return logs, total, nil
 }
 
+func GetApiLogsWithFilter(page, limit int, userID *uint, statusCode *int) ([]ApiLog, int64, error) {
+	var logs []ApiLog
+	var total int64
+
+	query := DB.Model(&ApiLog{})
+
+	if userID != nil {
+		query = query.Where("user_id = ?", *userID)
+	}
+	if statusCode != nil {
+		query = query.Where("status_code = ?", *statusCode)
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err = query.Preload("User").Offset(offset).Limit(limit).Order("created_at DESC").Find(&logs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
+}
+
 func GetApiLogsByUser(userID uint, page, limit int) ([]ApiLog, int64, error) {
 	var logs []ApiLog
 	var total int64
