@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"io"
 	"log"
@@ -29,6 +30,12 @@ const (
 	// 状态码
 	consoleStatusOK         = 200
 	consoleStatusBadRequest = 400
+	consoleStatusRateLimit  = 429
+
+	// 账号状态
+	consoleAccountStatusActive    = 1
+	consoleAccountStatusDisabled  = 2
+	consoleAccountStatusRateLimit = 3
 )
 
 // Console错误类型定义
@@ -78,17 +85,14 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestB
 		return
 	}
 
-	usageTokens := handleConsoleSuccessResponse(c, resp, responseReader)
-
-	// 更新账号状态
-	accountService := service.NewAccountService()
-	accountService.UpdateAccountStatus(account, resp.StatusCode, usageTokens)
-
-	// 处理错误响应
-	if resp.StatusCode >= consoleStatusBadRequest {
-		handleConsoleErrorResponse(c, resp, responseReader)
-		return
+	var usageTokens *common.TokenUsage
+	if resp.StatusCode < consoleStatusBadRequest {
+		usageTokens = handleConsoleSuccessResponse(c, resp, responseReader)
+	} else {
+		handleConsoleErrorResponse(c, resp, responseReader, account)
 	}
+
+	updateConsoleAccountAndStats(account, resp.StatusCode, usageTokens)
 
 	// 更新API Key状态
 	if apiKey != nil {
@@ -305,11 +309,11 @@ func appendConsoleErrorMessage(baseError gin.H, message string) gin.H {
 }
 
 // handleConsoleErrorResponse 处理错误响应
-func handleConsoleErrorResponse(c *gin.Context, resp *http.Response, responseReader io.Reader) {
+func handleConsoleErrorResponse(c *gin.Context, resp *http.Response, responseReader io.Reader, account *model.Account) {
 	responseBody, err := io.ReadAll(responseReader)
 	if err != nil {
 		log.Printf("❌ 读取错误响应失败: %v", err)
-		c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(errResponseRead, err.Error()))
+		c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrDecompression, err.Error()))
 		return
 	}
 
@@ -317,7 +321,94 @@ func handleConsoleErrorResponse(c *gin.Context, resp *http.Response, responseRea
 
 	c.Status(resp.StatusCode)
 	copyConsoleResponseHeaders(c, resp)
+
+	handleConsoleRateLimit(resp, responseBody, account)
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), responseBody)
+}
+
+// handleConsoleRateLimit 处理Console限流逻辑
+func handleConsoleRateLimit(resp *http.Response, responseBody []byte, account *model.Account) {
+	isRateLimited, resetTimestamp := detectConsoleRateLimit(resp, responseBody)
+	if !isRateLimited {
+		return
+	}
+
+	log.Printf("🚫 检测到Console账号 %s 被限流，状态码: %d", account.Name, resp.StatusCode)
+
+	account.CurrentStatus = consoleAccountStatusRateLimit
+
+	if resetTimestamp > 0 {
+		resetTime := time.Unix(resetTimestamp, 0)
+		rateLimitEndTime := model.Time(resetTime)
+		account.RateLimitEndTime = &rateLimitEndTime
+		log.Printf("Console账号 %s 限流至 %s", account.Name, resetTime.Format(time.RFC3339))
+	} else {
+		// 默认限流至当天晚上0点
+		now := time.Now()
+		resetTime := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		rateLimitEndTime := model.Time(resetTime)
+		account.RateLimitEndTime = &rateLimitEndTime
+		log.Printf("Console账号 %s 限流至 %s (默认至当天晚上0点)", account.Name, resetTime.Format(time.RFC3339))
+	}
+
+	if err := model.UpdateAccount(account); err != nil {
+		log.Printf("更新Console账号限流状态失败: %v", err)
+	}
+}
+
+// detectConsoleRateLimit 检测Console限流状态
+func detectConsoleRateLimit(resp *http.Response, responseBody []byte) (bool, int64) {
+	if resp.StatusCode == consoleStatusRateLimit {
+		if resetHeader := resp.Header.Get("anthropic-ratelimit-unified-reset"); resetHeader != "" {
+			if timestamp, err := strconv.ParseInt(resetHeader, 10, 64); err == nil {
+				resetTime := time.Unix(timestamp, 0)
+				log.Printf("🕐 Console提取到限流重置时间戳: %d (%s)", timestamp, resetTime.Format(time.RFC3339))
+				return true, timestamp
+			}
+		}
+		return true, 0
+	}
+
+	if len(responseBody) > 0 {
+		errorBodyStr := strings.ToLower(string(responseBody))
+		rateLimitKeyword := "exceed your account's rate limit"
+
+		if errorData := gjson.Get(string(responseBody), "error.message"); errorData.Exists() {
+			if strings.Contains(strings.ToLower(errorData.String()), rateLimitKeyword) {
+				return true, 0
+			}
+		} else if strings.Contains(errorBodyStr, rateLimitKeyword) {
+			return true, 0
+		}
+	}
+
+	return false, 0
+}
+
+// updateConsoleAccountAndStats 更新Console账号状态和统计
+func updateConsoleAccountAndStats(account *model.Account, statusCode int, usageTokens *common.TokenUsage) {
+	if statusCode >= consoleStatusOK && statusCode < 300 {
+		clearConsoleRateLimitIfExpired(account)
+	}
+
+	accountService := service.NewAccountService()
+	accountService.UpdateAccountStatus(account, statusCode, usageTokens)
+}
+
+// clearConsoleRateLimitIfExpired 清除Console已过期的限流状态
+func clearConsoleRateLimitIfExpired(account *model.Account) {
+	if account.CurrentStatus == consoleAccountStatusRateLimit && account.RateLimitEndTime != nil {
+		now := time.Now()
+		if now.After(time.Time(*account.RateLimitEndTime)) {
+			account.CurrentStatus = consoleAccountStatusActive
+			account.RateLimitEndTime = nil
+			if err := model.UpdateAccount(account); err != nil {
+				log.Printf("重置Console账号限流状态失败: %v", err)
+			} else {
+				log.Printf("Console账号 %s 限流状态已自动重置", account.Name)
+			}
+		}
+	}
 }
 
 // TestHandleClaudeConsoleRequest 测试处理Claude Console请求的函数

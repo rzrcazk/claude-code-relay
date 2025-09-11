@@ -222,8 +222,7 @@ Alternative method - create and configure Settings file: Create ~/.claude/settin
   "permissions": {
     "allow": [],
     "deny": []
-  },
-  "apiKeyHelper": "echo 'your-api-key-here'"
+  }
 }
 ```
 
