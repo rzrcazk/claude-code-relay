@@ -227,8 +227,7 @@ export ANTHROPIC_AUTH_TOKEN="你的API密钥"
   "permissions": {
     "allow": [],
     "deny": []
-  },
-  "apiKeyHelper": "echo 'your-api-key-here'"
+  }
 }
 ```
 

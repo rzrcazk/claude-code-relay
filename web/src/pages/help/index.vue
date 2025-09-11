@@ -424,7 +424,7 @@ echo 'export ANTHROPIC_AUTH_TOKEN="你的API密钥"' >> ~/.zshrc
 source ~/.zshrc
 
 # 对于 bash
-echo 'export ANTHROPIC_BASE_URL="{{ currentBaseUrl }}"' >> ~/.bash_profile  
+echo 'export ANTHROPIC_BASE_URL="{{ currentBaseUrl }}"' >> ~/.bash_profile
 echo 'export ANTHROPIC_AUTH_TOKEN="你的API密钥"' >> ~/.bash_profile
 source ~/.bash_profile</code></pre>
               </div>
@@ -444,8 +444,7 @@ source ~/.bash_profile</code></pre>
   "permissions": {
     "allow": [],
     "deny": []
-  },
-  "apiKeyHelper": "echo 'your-api-key-here'"
+  }
 }</code></pre>
               </div>
             </div>
