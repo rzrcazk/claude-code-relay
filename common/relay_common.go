@@ -30,7 +30,7 @@ const TestRequestBodyTemplate = `{
 		}
 	],
 	"metadata": {
-		"user_id": "20b98a014e3182f9ce654e6c105432083cca392beb1416f6406508b56dc5f"
+		"user_id": "user_6f30b450fd7e45f22fd40f61e2b2617d2d8aa13ececfb5c00c879caec1c0b00d_account__session_d09624bf-09fc-4cdd-afde-cee6abaafb23"
 	},
 	"max_tokens": %d,
 	"stream": true
@@ -66,17 +66,17 @@ func getGlobalClaudeCodeHeaders() map[string]string {
 
 // MergeHeaders 合并全局Claude Code请求头和用户提供的请求头
 // 用户提供的头部优先级更高，可以覆盖全局头部
-func MergeHeaders(headers map[string]string, anthropicBeta string) map[string]string {
+func MergeHeaders(customRequestHeaders map[string]string, anthropicBeta string) map[string]string {
 	globalHeaders := getGlobalClaudeCodeHeaders()
 
-	result := make(map[string]string, len(globalHeaders)+len(headers))
+	result := make(map[string]string, len(globalHeaders)+len(customRequestHeaders))
 
 	for k, v := range globalHeaders {
 		result[k] = v
 	}
 
 	// 用户提供的头部优先级更高，可以覆盖全局头部
-	for k, v := range headers {
+	for k, v := range customRequestHeaders {
 		result[k] = v
 	}
 

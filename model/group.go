@@ -16,7 +16,7 @@ type Group struct {
 	Remark     string         `json:"remark" gorm:"type:text"`
 	Status     int            `json:"status" gorm:"default:1"` // 1:启用 0:禁用
 	UserID     uint           `json:"user_id" gorm:"not null;uniqueIndex:idx_groups_user_name"`
-	InstanceID string         `json:"instance_id" gorm:"type:varchar(61)"`
+	InstanceID string         `json:"instance_id" gorm:"type:varchar(150)"`
 	CreatedAt  Time           `json:"created_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP"`
 	UpdatedAt  Time           `json:"updated_at" gorm:"type:datetime;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"`
 	DeletedAt  gorm.DeletedAt `json:"-" gorm:"uniqueIndex:idx_groups_user_name"`

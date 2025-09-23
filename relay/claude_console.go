@@ -10,7 +10,9 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"io"
@@ -115,13 +117,15 @@ func extractConsoleAPIKey(c *gin.Context) *model.ApiKey {
 func parseConsoleRequest(c *gin.Context, requestBody []byte) ([]byte, error) {
 	body, _ := sjson.SetBytes(requestBody, "stream", true) // 强制流式输出
 
+	userID := ""
 	// 上下文中提取分组ID
 	if groupID, exists := c.Get("group_id"); exists {
-		body, _ = sjson.SetBytes(body, "metadata.user_id", model.GetInstanceID(uint(groupID.(int))))
+		userID = fmt.Sprintf("user_%x_account__session_%s", model.GetInstanceID(uint(groupID.(int))), uuid.New().String())
 	} else {
-		body, _ = sjson.SetBytes(body, "metadata.user_id", common.GetInstanceID()) // 设置固定的用户ID
+		userID = fmt.Sprintf("user_%x_account__session_%s", common.GetInstanceID(), uuid.New().String())
 	}
 
+	body, _ = sjson.SetBytes(body, "metadata.user_id", userID)
 	return body, nil
 }
 
