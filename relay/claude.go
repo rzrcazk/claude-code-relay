@@ -514,7 +514,7 @@ func getValidAccessToken(account *model.Account) (string, error) {
 	expiresAt := int64(account.ExpiresAt)
 
 	// 如果过期时间存在且距离过期不到5分钟，或者已经过期，则需要刷新
-	if expiresAt > 0 && now >= (expiresAt-tokenRefreshBuffer) {
+	if expiresAt > 0 && now >= (expiresAt-int64(tokenRefreshBuffer)) {
 		log.Printf("账号 %s 的token即将过期或已过期，尝试刷新", account.Name)
 
 		if account.RefreshToken == "" {
