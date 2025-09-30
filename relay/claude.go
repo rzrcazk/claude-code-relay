@@ -48,8 +48,7 @@ var (
 	ClaudeAPIURL         = claudeAPIBaseURL + claudeMessagesPath + claudeAPIBetaParam
 	ClaudeCountTokensURL = claudeAPIBaseURL + claudeCountTokensPath + claudeAPIBetaParam
 	ClaudeOAuthTokenURL  = claudeConsoleBaseURL + claudeOAuthTokenPath
-)
-
+	
 	// 默认超时配置
 	defaultHTTPTimeout = 120 * time.Second
 	tokenRefreshBuffer = 300 // 5分钟
