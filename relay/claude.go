@@ -27,10 +27,19 @@ import (
 )
 
 const (
-	ClaudeAPIURL         = "https://api.anthropic.com/v1/messages?beta=true"
-	ClaudeCountTokensURL = "https://api.anthropic.com/v1/messages/count_tokens?beta=true"
-	ClaudeOAuthTokenURL  = "https://console.anthropic.com/v1/oauth/token"
-	ClaudeOAuthClientID  = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+	// 默认API端点（当环境变量未设置时使用）
+	defaultClaudeAPIURL         = "https://api.anthropic.com/v1/messages?beta=true"
+	defaultClaudeCountTokensURL = "https://api.anthropic.com/v1/messages/count_tokens?beta=true"
+	defaultClaudeOAuthTokenURL  = "https://console.anthropic.com/v1/oauth/token"
+	ClaudeOAuthClientID         = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+)
+
+var (
+	// 支持环境变量配置的API端点
+	ClaudeAPIURL         = getEnvOrDefault("CLAUDE_API_URL", defaultClaudeAPIURL)
+	ClaudeCountTokensURL = getEnvOrDefault("CLAUDE_COUNT_TOKENS_URL", defaultClaudeCountTokensURL)
+	ClaudeOAuthTokenURL  = getEnvOrDefault("CLAUDE_OAUTH_TOKEN_URL", defaultClaudeOAuthTokenURL)
+)
 
 	// 默认超时配置
 	defaultHTTPTimeout = 120 * time.Second
@@ -699,4 +708,12 @@ func GetCountTokens(c *gin.Context, account *model.Account, requestBody []byte) 
 
 	// 返回原始响应
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), responseBody)
+}
+
+// getEnvOrDefault 获取环境变量，如果未设置则返回默认值
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
