@@ -27,18 +27,27 @@ import (
 )
 
 const (
-	// 默认API端点（当环境变量未设置时使用）
-	defaultClaudeAPIURL         = "https://api.anthropic.com/v1/messages?beta=true"
-	defaultClaudeCountTokensURL = "https://api.anthropic.com/v1/messages/count_tokens?beta=true"
-	defaultClaudeOAuthTokenURL  = "https://console.anthropic.com/v1/oauth/token"
-	ClaudeOAuthClientID         = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+	// 默认API基础URL（当环境变量未设置时使用）
+	defaultClaudeAPIBaseURL    = "https://api.anthropic.com"
+	defaultClaudeConsoleBaseURL = "https://console.anthropic.com"
+	ClaudeOAuthClientID        = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+	
+	// API路径
+	claudeMessagesPath        = "/v1/messages"
+	claudeCountTokensPath     = "/v1/messages/count_tokens"
+	claudeOAuthTokenPath      = "/v1/oauth/token"
+	claudeAPIBetaParam        = "?beta=true"
 )
 
 var (
-	// 支持环境变量配置的API端点
-	ClaudeAPIURL         = getEnvOrDefault("CLAUDE_API_URL", defaultClaudeAPIURL)
-	ClaudeCountTokensURL = getEnvOrDefault("CLAUDE_COUNT_TOKENS_URL", defaultClaudeCountTokensURL)
-	ClaudeOAuthTokenURL  = getEnvOrDefault("CLAUDE_OAUTH_TOKEN_URL", defaultClaudeOAuthTokenURL)
+	// 支持环境变量配置的基础URL
+	claudeAPIBaseURL    = getEnvOrDefault("CLAUDE_API_BASE_URL", defaultClaudeAPIBaseURL)
+	claudeConsoleBaseURL = getEnvOrDefault("CLAUDE_CONSOLE_BASE_URL", defaultClaudeConsoleBaseURL)
+	
+	// 实际使用的完整API端点URL（基础URL + 路径）
+	ClaudeAPIURL         = claudeAPIBaseURL + claudeMessagesPath + claudeAPIBetaParam
+	ClaudeCountTokensURL = claudeAPIBaseURL + claudeCountTokensPath + claudeAPIBetaParam
+	ClaudeOAuthTokenURL  = claudeConsoleBaseURL + claudeOAuthTokenPath
 )
 
 	// 默认超时配置
