@@ -5,7 +5,7 @@ version: '3.8'
 
 services:
   app:
-    image: registry.cn-hangzhou.aliyuncs.com/ripper/claude-code-relay:amd64
+    image: claude-code-relay:latest
     container_name: claude-code-relay-app
     restart: unless-stopped
     ports:
@@ -15,6 +15,9 @@ services:
     environment:
       # 确保时区设置正确
       TZ: Asia/Shanghai
+      # Claude API代理配置
+      CLAUDE_API_BASE_URL: https://xget.952712.xyz/ip/anthropic
+      CLAUDE_CONSOLE_BASE_URL: https://xget.952712.xyz/ip/anthropic/console
     volumes:
       - app_logs:/app/logs
       # 如果使用SQLite，取消下面这行的注释
