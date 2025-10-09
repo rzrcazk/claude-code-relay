@@ -9,6 +9,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -58,19 +59,19 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestB
 
 	body, err := parseConsoleRequest(c, requestBody)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, appendConsoleErrorMessage(consoleErrRequestBodyRead, err.Error()))
+		respondConsoleStreamError(c, http.StatusBadRequest, appendConsoleErrorMessage(consoleErrRequestBodyRead, err.Error()))
 		return
 	}
 
 	client := createConsoleHTTPClient(account)
 	if client == nil {
-		c.JSON(http.StatusInternalServerError, consoleErrProxyConfig)
+		respondConsoleStreamError(c, http.StatusInternalServerError, consoleErrProxyConfig)
 		return
 	}
 
 	req, err := createConsoleRequest(c, body, account)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrCreateRequest, err.Error()))
+		respondConsoleStreamError(c, http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrCreateRequest, err.Error()))
 		return
 	}
 
@@ -83,7 +84,7 @@ func HandleClaudeConsoleRequest(c *gin.Context, account *model.Account, requestB
 
 	responseReader, err := createConsoleResponseReader(resp)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrDecompression, err.Error()))
+		respondConsoleStreamError(c, http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrDecompression, err.Error()))
 		return
 	}
 
@@ -223,13 +224,19 @@ func setConsoleStreamHeaders(c *gin.Context, req *http.Request) {
 
 // handleConsoleRequestError 处理Console请求错误
 func handleConsoleRequestError(c *gin.Context, err error) {
+	var statusCode int
+	var errorMsg gin.H
+
 	if errors.Is(err, context.Canceled) {
-		c.JSON(http.StatusRequestTimeout, consoleErrTimeout)
-		return
+		statusCode = http.StatusRequestTimeout
+		errorMsg = consoleErrTimeout
+	} else {
+		statusCode = http.StatusInternalServerError
+		errorMsg = appendConsoleErrorMessage(consoleErrNetworkError, err.Error())
+		log.Println("request conversation failed:", err.Error())
 	}
 
-	log.Println("request conversation failed:", err.Error())
-	c.JSON(http.StatusInternalServerError, appendConsoleErrorMessage(consoleErrNetworkError, err.Error()))
+	respondConsoleStreamError(c, statusCode, errorMsg)
 }
 
 // createConsoleResponseReader 创建Console响应读取器（处理压缩）
@@ -310,6 +317,20 @@ func appendConsoleErrorMessage(baseError gin.H, message string) gin.H {
 	errorMap := baseError["error"].(map[string]interface{})
 	errorMap["message"] = errorMap["message"].(string) + ": " + message
 	return gin.H{"error": errorMap}
+}
+
+// respondConsoleStreamError 以流式格式返回Console错误响应
+func respondConsoleStreamError(c *gin.Context, statusCode int, errorMsg gin.H) {
+	c.Status(statusCode)
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	// 构造 SSE 格式的错误事件
+	errorJSON, _ := json.Marshal(errorMsg)
+	sseError := fmt.Sprintf("event: error\ndata: %s\n\n", string(errorJSON))
+	c.Writer.Write([]byte(sseError))
+	c.Writer.Flush()
 }
 
 // handleConsoleErrorResponse 处理错误响应

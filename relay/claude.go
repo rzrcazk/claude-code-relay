@@ -94,19 +94,19 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account, requestBody []b
 	accessToken, err := getValidAccessToken(account)
 	if err != nil {
 		log.Printf("获取有效访问token失败: %v", err)
-		c.JSON(http.StatusInternalServerError, appendErrorMessage(errAuthFailed, err.Error()))
+		respondStreamError(c, http.StatusInternalServerError, appendErrorMessage(errAuthFailed, err.Error()))
 		return
 	}
 
 	client := createHTTPClient(account)
 	if client == nil {
-		c.JSON(http.StatusInternalServerError, errProxyConfig)
+		respondStreamError(c, http.StatusInternalServerError, errProxyConfig)
 		return
 	}
 
 	req, err := createClaudeRequest(c, requestData.Body, accessToken)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, appendErrorMessage(errCreateRequest, err.Error()))
+		respondStreamError(c, http.StatusInternalServerError, appendErrorMessage(errCreateRequest, err.Error()))
 		return
 	}
 
@@ -119,7 +119,7 @@ func HandleClaudeRequest(c *gin.Context, account *model.Account, requestBody []b
 
 	responseReader, err := createResponseReader(resp)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, appendErrorMessage(errDecompression, err.Error()))
+		respondStreamError(c, http.StatusInternalServerError, appendErrorMessage(errDecompression, err.Error()))
 		return
 	}
 
@@ -251,13 +251,19 @@ func setStreamHeaders(c *gin.Context, req *http.Request) {
 
 // handleRequestError 处理请求错误
 func handleRequestError(c *gin.Context, err error) {
+	var statusCode int
+	var errorMsg gin.H
+
 	if errors.Is(err, context.Canceled) {
-		c.JSON(http.StatusRequestTimeout, errTimeout)
-		return
+		statusCode = http.StatusRequestTimeout
+		errorMsg = errTimeout
+	} else {
+		statusCode = http.StatusInternalServerError
+		errorMsg = appendErrorMessage(errNetworkError, err.Error())
+		log.Printf("❌ 请求失败: %v", err)
 	}
 
-	log.Printf("❌ 请求失败: %v", err)
-	c.JSON(http.StatusInternalServerError, appendErrorMessage(errNetworkError, err.Error()))
+	respondStreamError(c, statusCode, errorMsg)
 }
 
 // createResponseReader 创建响应读取器（处理压缩）
@@ -435,6 +441,20 @@ func appendErrorMessage(baseError gin.H, message string) gin.H {
 	errorMap := baseError["error"].(map[string]interface{})
 	errorMap["message"] = errorMap["message"].(string) + ": " + message
 	return gin.H{"error": errorMap}
+}
+
+// respondStreamError 以流式格式返回错误响应
+func respondStreamError(c *gin.Context, statusCode int, errorMsg gin.H) {
+	c.Status(statusCode)
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	// 构造 SSE 格式的错误事件
+	errorJSON, _ := json.Marshal(errorMsg)
+	sseError := fmt.Sprintf("event: error\ndata: %s\n\n", string(errorJSON))
+	c.Writer.Write([]byte(sseError))
+	c.Writer.Flush()
 }
 
 // TestsHandleClaudeRequest 用于测试的Claude请求处理函数，功能同HandleClaudeRequest但不更新日志和账号状态
@@ -685,7 +705,13 @@ func GetCountTokens(c *gin.Context, account *model.Account, requestBody []byte) 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		handleRequestError(c, err)
+		// count_tokens 不使用流式响应，返回普通 JSON 错误
+		if errors.Is(err, context.Canceled) {
+			c.JSON(http.StatusRequestTimeout, errTimeout)
+		} else {
+			log.Printf("❌ count_tokens请求失败: %v", err)
+			c.JSON(http.StatusInternalServerError, appendErrorMessage(errNetworkError, err.Error()))
+		}
 		return
 	}
 	defer common.CloseIO(resp.Body)
